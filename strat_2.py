@@ -27,7 +27,7 @@ from risk_shared.records.types.move_type import MoveType
 import numpy as np
 import networkx as nx
 
-class Map():
+class MapNetwork():
     def __init__(self):
         G = nx.Graph()
         G.add_nodes_from(list(range(42)))
@@ -64,9 +64,9 @@ class Map():
         G.add_edges_from([(38,39),(38,41)])
         G.add_edges_from([(39,41)])
         G.add_edges_from([(40,24),(40,41),(40,39)])
-
-
-
+        self.map = G
+    
+    def get_map(self):
 
 # We will store ur enemy in the bot state.
 class BotState():

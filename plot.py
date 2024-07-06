@@ -1,11 +1,11 @@
 import networkx as nx
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 # Create an empty graph
 G = nx.Graph()
 
 # Add nodes from 0 to 41
-G.add_nodes_from(list(range(42)))
+G.add_nodes_from(list(range(42)), num = 0, owner = None)
 
 # Add edges
 G.add_edges_from([(0,1),(0,5),(0,21)])
@@ -42,19 +42,48 @@ G.add_edges_from([(38,39),(38,41)])
 G.add_edges_from([(39,41)])
 G.add_edges_from([(40,24),(40,41),(40,39)])
 
-pos = nx.spring_layout(G)
 
-# Draw nodes
-plt.figure(figsize=(12, 12))
-nx.draw_networkx_nodes(G, pos, node_size=500, node_color="skyblue")
+NA = [8, 3, 2, 6, 1, 0, 7, 5, 4]
+SA = [30, 31, 29, 28]
+EU = [14, 11, 10, 9, 12, 15, 13]
+AF = [35, 32, 34, 33, 36, 37]
+AS = [19, 23, 24, 21, 20, 26, 16, 22, 25, 17, 18, 27]
+AU = [40, 41, 39, 38]
 
-# Draw edges
-nx.draw_networkx_edges(G, pos, edge_color="gray")
+continents = {'NA': NA, 'SA': SA, 'EU': EU, 'AF': AF, 'AS': AS, 'AU': AU}
 
-# Draw labels
-nx.draw_networkx_labels(G, pos, font_size=10, font_weight="bold")
+for group, nodes in continents.items():
+    for node in nodes:
+        G.nodes[node]['group'] = group
 
-# Display the plot
-plt.title("NetworkX Graph with Spring Layout")
-plt.axis("off")  # Turn off axis labels
-plt.show()
+# useful functions
+# print(list(G.nodes)) #all the nodes in a list
+# print(list(G.edges)) #list of tuples of connections
+
+G.nodes[1]['num']=2
+G.nodes[1]['owner']='me'
+print(G.nodes[1]['num'])
+print(G.nodes[1]['owner'])
+print(G.nodes[1]['group'])
+print(G.nodes.data())
+
+print(G.degree[1])#tuple of location and degree of connection
+print(list(G.adj[1]))#get how many connections there are and its nodes
+print(list(G[1])) #same as adj[1]
+ #get how many connections there are
+# pos = nx.spring_layout(G)
+
+# # Draw nodes
+# plt.figure(figsize=(12, 12))
+# nx.draw_networkx_nodes(G, pos, node_size=500, node_color="skyblue")
+
+# # Draw edges
+# nx.draw_networkx_edges(G, pos, edge_color="gray")
+
+# # Draw labels
+# nx.draw_networkx_labels(G, pos, font_size=10, font_weight="bold")
+
+# # Display the plot
+# plt.title("NetworkX Graph with Spring Layout")
+# plt.axis("off")  # Turn off axis labels
+# plt.show()
