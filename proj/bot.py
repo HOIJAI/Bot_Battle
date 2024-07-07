@@ -24,8 +24,11 @@ from risk_shared.records.moves.move_redeem_cards import MoveRedeemCards
 from risk_shared.records.moves.move_troops_after_attack import MoveTroopsAfterAttack
 from risk_shared.records.record_attack import RecordAttack
 from risk_shared.records.types.move_type import MoveType
+import numpy as np
+import networkx as nx
 ## dev imports
 from data_structures.bot_state import BotState
+from data_structures.mapnetwork import MapNetwork
 from handlers.handle_attack.sample import handle_attack
 from handlers.handle_claim_territory.sample import handle_claim_territory
 from handlers.handle_place_initial_troop.sample import handle_place_initial_troop
@@ -36,12 +39,12 @@ from handlers.handle_defend.sample import handle_defend
 from handlers.handle_fortify.sample import handle_fortify
 
 
-
 def main():
     # Get the game object, which will connect you to the engine and
     # track the state of the game.
     game = Game()
     bot_state = BotState()
+    mapNetwork = MapNetwork()
 
     # Respond to the engine's queries with your moves.
     while True:
@@ -52,7 +55,7 @@ def main():
         def choose_move(query: QueryType) -> MoveType:
             match query:
                 case QueryClaimTerritory() as q:
-                    return handle_claim_territory(game, bot_state, q)
+                    return handle_claim_territory(game, bot_state, q, mapNetwork)
 
                 case QueryPlaceInitialTroop() as q:
                     return handle_place_initial_troop(game, bot_state, q)
@@ -64,7 +67,7 @@ def main():
                     return handle_distribute_troops(game, bot_state, q)
 
                 case QueryAttack() as q:
-                    return handle_attack(game, bot_state, q)
+                    return handle_attack(game, bot_state, q, mapNetwork)
 
                 case QueryTroopsAfterAttack() as q:
                     return handle_troops_after_attack(game, bot_state, q)

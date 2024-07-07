@@ -5,8 +5,9 @@ from risk_shared.records.moves.move_attack import MoveAttack
 from risk_shared.records.moves.move_attack_pass import MoveAttackPass
 
 from data_structures.bot_state import BotState
+from data_structures.mapnetwork import MapNetwork
 
-def handle_attack(game: Game, bot_state: BotState, query: QueryAttack) -> Union[MoveAttack, MoveAttackPass]:
+def handle_attack(game: Game, bot_state: BotState, query: QueryAttack, mapNetwork: MapNetwork) -> Union[MoveAttack, MoveAttackPass]:
     """After the troop phase of your turn, you may attack any number of times until you decide to
     stop attacking (by passing). After a successful attack, you may move troops into the conquered
     territory. If you eliminated a player you will get a move to redeem cards and then distribute troops."""

@@ -124,6 +124,7 @@ def main():
     # track the state of the game.
     game = Game()
     bot_state = BotState()
+    mapNetwork = MapNetwork()
    
     # Respond to the engine's queries with your moves.
     while True:

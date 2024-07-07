@@ -1,37 +1,5 @@
 import os
 
-###############
-# Update this #
-###############
-# List of files to combine
-files_to_combine = [
-    'data_structures/bot_state.py',
-    'handlers/handle_attack/sample.py',
-    'handlers/handle_claim_territory/sample.py',
-    'handlers/handle_place_initial_troop/sample.py',
-    'handlers/handle_redeem_cards/sample.py',
-    'handlers/handle_distribute_troops/sample.py',
-    'handlers/handle_troops_after_attack/sample.py',
-    'handlers/handle_defend/sample.py',
-    'handlers/handle_fortify/sample.py'
-]
-
-###############
-# Update this #
-###############
-# List of dev imports to exclude
-dev_imports = [
-    'from data_structures.bot_state import BotState',
-    'from handlers.handle_attack.sample import handle_attack',
-    'from handlers.handle_claim_territory.sample import handle_claim_territory',
-    'from handlers.handle_place_initial_troop.sample import handle_place_initial_troop',
-    'from handlers.handle_redeem_cards.sample import handle_redeem_cards',
-    'from handlers.handle_distribute_troops.sample import handle_distribute_troops',
-    'from handlers.handle_troops_after_attack.sample import handle_troops_after_attack',
-    'from handlers.handle_defend.sample import handle_defend',
-    'from handlers.handle_fortify.sample import handle_fortify'
-]
-
 # The output combined file
 output_file = 'out.py'
 
@@ -41,21 +9,34 @@ def remove_imports(file_content):
     filtered_lines = [line for line in lines if not line.strip().startswith(('import', 'from'))]
     return '\n'.join(filtered_lines)
 
+try:
+    os.remove(output_file)
+except OSError:
+    pass
+
 with open(output_file, 'w') as outfile:
     # Copy content of main.py while retaining imports
     with open('bot.py', 'r') as mainfile:
         lines = mainfile.readlines()
         import_lines = []
         code_lines = []
-        is_import = True
+        copy_import = True
+        files_to_combine = []
 
         for line in lines:
-            if is_import and not line.strip().startswith(('import', 'from')):
-                is_import = False
-            if is_import:
+            if copy_import and not line.strip().startswith(('import', 'from')):
+                copy_import = False
+            if copy_import:
                 import_lines.append(line)
             else:
-                if line.strip() not in dev_imports:
+                if line.strip() == "## dev imports":
+                    copy_import = False
+                elif line.strip().startswith(('import', 'from')):
+                    import_file_path = line.strip().split()[1] 
+                    import_file_path = import_file_path.replace(".","/")
+                    import_file_path = import_file_path + ".py"
+                    files_to_combine.append(import_file_path)
+                else:
                     code_lines.append(line)
 
         outfile.writelines(import_lines)
