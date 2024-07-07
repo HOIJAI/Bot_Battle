@@ -67,9 +67,9 @@ print(G.nodes[1]['owner'])
 print(G.nodes[1]['group'])
 print(G.nodes.data())
 
-print(G.degree[1])#tuple of location and degree of connection
+print(G.degree[1]) #same as len(list(G.adj[1]))
 print(list(G.adj[1]))#get how many connections there are and its nodes
-print(list(G[1])) #same as adj[1]
+print(len(list(G[1]))) #same as adj[1]
  #get how many connections there are
 # pos = nx.spring_layout(G)
 
