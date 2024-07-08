@@ -65,10 +65,77 @@ for u, v in G.edges():
         connected_to_another_continent.append(v)
 
 connected_to_another_continent = list(set(connected_to_another_continent))
+for node in range(0, 15):
+    G.nodes[node]['owner'] = '0'
 
-print("Nodes connected to another continent:", connected_to_another_continent)
+G.nodes[30]['owner'] = 'me'
+G.nodes[29]['owner'] = 'me'
+
+max_troops = -1
+best_node = None
+
+# Get the list of nodes in the continent
+continent_nodes = continents['NA']
+
+# Identify nodes in the continent owned by 'me'
+nodes_owned_by_me = [node for node, data in G.nodes(data=True) if data.get('owner') == 'me']
+
+# Iterate through nodes owned by 'me'
+for node in nodes_owned_by_me:
+    # Check adjacent nodes
+    for neighbor in G.neighbors(node):
+        # Check if neighbor is in the continent and owned by the specified owner
+        if neighbor in continent_nodes and G.nodes[neighbor].get('owner') == '0':
+            # Get the number of troops
+            num_troops = G.nodes[neighbor].get('num', 0)
+            # Update the best node if this one has more troops
+            if num_troops > max_troops:
+                max_troops = num_troops
+                best_node = node
+                
+print(best_node)
+results = []
+for continent, nodes in continents.items():
+    owner_count = {}
+    for node in nodes:
+        owner = G.nodes[node].get('owner')
+        if owner and owner != 'me':
+            if owner not in owner_count:
+                owner_count[owner] = 0
+            owner_count[owner] += 1
+    for owner, count in owner_count.items():
+        if count / len(nodes) >= 0.75:
+            results.append((continent, owner))
+            break 
+print(results[0][0])
+# print(G.nodes[1].get('num'))
+
+# print("Nodes connected to another continent:", connected_to_another_continent)
 
 
+# nodes_owned_by_me = [node for node in G.nodes if G.nodes[node].get('owner') == 'me']
+
+# # Check if there is a node surrounded by nodes also owned by 'me'
+# surrounded_nodes = []
+
+# for node in nodes_owned_by_me:
+#     neighbors = G.neighbors(node)
+#     if all(G.nodes[neighbor].get('owner') == 'me' for neighbor in neighbors):
+#         surrounded_nodes.append(node)
+
+# if surrounded_nodes:
+#     print("Nodes owned by 'me' that are surrounded by nodes also owned by 'me':", surrounded_nodes)
+# else:
+#     print("No nodes owned by 'me' are completely surrounded by nodes also owned by 'me'.")
+# nodes_owned_by_me = [node for node in G.nodes if G.nodes[node].get('owner') == 'me']
+
+# # Step 2: Calculate clustering coefficients for these nodes
+# clustering_coefficients = nx.clustering(G, nodes_owned_by_me)
+
+# # Step 3: Find the top 5 nodes with the highest clustering coefficients
+# top_5_nodes = sorted(clustering_coefficients, key=clustering_coefficients.get, reverse=True)[:5] # type: ignore
+
+# print("Top 5 nodes owned by 'me' with the highest clustering coefficients:", top_5_nodes)
 
 # # Calculate degree for each node
 # node_degrees = {node: degree for node, degree in nx.degree(G)}
@@ -93,48 +160,47 @@ print("Nodes connected to another continent:", connected_to_another_continent)
 #         neighbors_with_most_links.append(neighbors_sorted_by_degree[0][0])
 
 
-# Calculate degree for each node
-node_degrees = {node: degree for node, degree in nx.degree(G)}
+# # Calculate degree for each node
+# node_degrees = {node: degree for node, degree in nx.degree(G)}
 
-# Filter nodes where owner is None
-nodes_with_owner_none = [node for node in G.nodes if G.nodes[node]['owner'] is None]
+# # Filter nodes where owner is None
+# nodes_with_owner_none = [node for node in G.nodes if G.nodes[node]['owner'] is None]
 
-# Sort nodes by degree in descending order
-nexus_nodes = sorted(nodes_with_owner_none, key=lambda node: node_degrees[node], reverse=True)
+# # Sort nodes by degree in descending order
+# nexus_nodes = sorted(nodes_with_owner_none, key=lambda node: node_degrees[node], reverse=True)
 
-print("Nodes sorted by degree (owner=None):", nexus_nodes)
+# print("Nodes sorted by degree (owner=None):", nexus_nodes)
 
-# Find nodes (border_nodes) with the minimum links (owner=None)
-min_degree = min(node_degrees[node] for node in nodes_with_owner_none)
-border_nodes = [node for node in nodes_with_owner_none if node_degrees[node] == min_degree]
+# # Find nodes (border_nodes) with the minimum links (owner=None)
+# min_degree = min(node_degrees[node] for node in nodes_with_owner_none)
+# border_nodes = [node for node in nodes_with_owner_none if node_degrees[node] == min_degree]
 
-print("Border nodes (owner=None) with the minimum links:", border_nodes)
+# print("Border nodes (owner=None) with the minimum links:", border_nodes)
 
-# Find nexus nodes that are connected to border nodes
-nexus_connected_to_border = []
+# # Find nexus nodes that are connected to border nodes
+# nexus_connected_to_border = []
 
-for nexus_node in nexus_nodes:
-    connected_to_border = [node for node in G.neighbors(nexus_node) if node in border_nodes]
-    if connected_to_border:
-        nexus_connected_to_border.append((nexus_node, connected_to_border))
+# for nexus_node in nexus_nodes:
+#     connected_to_border = [node for node in G.neighbors(nexus_node) if node in border_nodes]
+#     if connected_to_border:
+#         nexus_connected_to_border.append((nexus_node, connected_to_border))
 
-print("Nexus nodes connected to border nodes:", nexus_connected_to_border)
+# print("Nexus nodes connected to border nodes:", nexus_connected_to_border)
 
-# Verify that most connections between nexus and border nodes are owner=None
-valid_nexus_nodes = []
+# # Verify that most connections between nexus and border nodes are owner=None
+# valid_nexus_nodes = []
 
-for nexus, connected_border in nexus_connected_to_border:
-    count_owner_none = sum(1 for neighbor in connected_border if G.nodes[neighbor]['owner'] is None)
-    if count_owner_none / len(connected_border) >= 0.5:  # Adjust threshold as needed
-        valid_nexus_nodes.append(nexus)
+# for nexus, connected_border in nexus_connected_to_border:
+#     count_owner_none = sum(1 for neighbor in connected_border if G.nodes[neighbor]['owner'] is None)
+#     if count_owner_none / len(connected_border) >= 0.5:  # Adjust threshold as needed
+#         valid_nexus_nodes.append(nexus)
 
-print("Valid nexus nodes with most links to owner=None border nodes:", valid_nexus_nodes)
+# print("Valid nexus nodes with most links to owner=None border nodes:", valid_nexus_nodes)
 # useful functions
 # print(list(G.nodes)) #all the nodes in a list
 # print(list(G.edges)) #list of tuples of connections
 
 # G.nodes[1]['num']=2
-# G.nodes[1]['owner']='me'
 # print(G.nodes[1]['num'])
 # print(G.nodes[1]['owner'])
 # print(G.nodes[1]['group'])

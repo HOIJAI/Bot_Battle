@@ -22,16 +22,16 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
         mapNetwork.set_node_owner(i,'me')
 
     # a random point just in case
-    curr_nexus = 31
+    nexus_list = mapNetwork.nexus()
+    if len(nexus_list)!=0:
+        curr_nexus = nexus_list[0]
     #first selection
     if len(unclaimed_territories) > 37:
-        nexus_list = mapNetwork.nexus()
-        curr_nexus = nexus_list[0]
         selected_territory = nexus_list[0]
 
     #next 4 selections surrounding the nexus, if got broken choose a new nexus
     elif 37 >= len(unclaimed_territories) > 17:
-        adjacent_territories = game.state.get_all_adjacent_territories([curr_nexus])
+        adjacent_territories = game.state.get_all_adjacent_territories(my_territories)
         claimed = 0
         for i in adjacent_territories:
             if mapNetwork.get_node_property(i, 'owner') == 'me':
@@ -46,8 +46,6 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
             selected_territory = min(links, key=lambda k: links[k])
         #else find a new nexus since the current one is compromised
         elif len(available) + claimed <= 2:
-            nexus_list = mapNetwork.nexus()
-            curr_nexus = nexus_list[0]
             selected_territory = nexus_list[0]
         else:
             selected_territory = sorted(unclaimed_territories, key=lambda x: len(game.state.map.get_adjacent_to(x)), reverse=True)[0]

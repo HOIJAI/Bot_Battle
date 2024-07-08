@@ -112,7 +112,7 @@ class MapNetwork:
         return [node for node, data in self.G.nodes(data=True) if data.get('owner') == owner]
     
     #get the player who got the most territories in specific continents (>70% of owning the entire continent):
-    def check_ownership(self, continent):
+    def check_ownership(self):
         results = {}
         for continent, nodes in self.continents.items():
             owner_count = {}
@@ -123,6 +123,50 @@ class MapNetwork:
                         owner_count[owner] = 0
                     owner_count[owner] += 1
             for owner, count in owner_count.items():
-                if count / len(nodes) > 0.7:
+                if count / len(nodes) >= 0.75:
                     results[continent] = owner
         return results
+    
+    def get_cluster(self):
+        nodes_owned_by_me = [node for node in self.G.nodes if self.G.nodes[node].get('owner') == 'me']
+        #Calculate clustering coefficients for these nodes
+        clustering_coefficients = nx.clustering(self.G, nodes_owned_by_me)
+
+        #Find the top 5 nodes with the highest clustering coefficients
+        top_5_nodes = sorted(clustering_coefficients, key=clustering_coefficients.get, reverse=True)[:5] # type: ignore
+
+        return top_5_nodes #list
+    
+    def get_nexus (self): #recursion to find the centre
+        nodes_owned_by_me = [node for node in self.G.nodes if self.G.nodes[node].get('owner') == 'me']
+        # Check if there is a node surrounded by nodes also owned by 'me'
+        surrounded_nodes = []
+        for node in nodes_owned_by_me:
+            neighbors = self.G.neighbors(node)
+            if all(self.G.nodes[neighbor].get('owner') == 'me' for neighbor in neighbors):
+                surrounded_nodes.append(node)
+        return surrounded_nodes
+
+    def find_max_troop_adjacent_node(self, continent, owner):
+        max_troops = -1
+        best_node = None
+        
+        # Get the list of nodes in the continent
+        continent_nodes = self.continents[continent]
+        
+        # Identify nodes in the continent owned by 'me'
+        nodes_owned_by_me = self.nodes_with_same_owner('me')
+        
+        # Iterate through nodes owned by 'me'
+        for node in nodes_owned_by_me:
+            # Check adjacent nodes
+            for neighbor in self.G.neighbors(node):
+                # Check if neighbor is in the continent and owned by the specified owner
+                if neighbor in continent_nodes and self.G.nodes[neighbor].get('owner') == '0':
+                    # Get the number of troops
+                    num_troops = self.G.nodes[neighbor].get('troops', 0)
+                    # Update the best node if this one has more troops
+                    if num_troops > max_troops:
+                        max_troops = num_troops
+                        best_node = [node, neighbor]
+        return best_node

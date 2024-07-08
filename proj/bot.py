@@ -58,13 +58,13 @@ def main():
                     return handle_claim_territory(game, bot_state, q, mapNetwork)
 
                 case QueryPlaceInitialTroop() as q:
-                    return handle_place_initial_troop(game, bot_state, q)
+                    return handle_place_initial_troop(game, bot_state, q, mapNetwork)
 
                 case QueryRedeemCards() as q:
                     return handle_redeem_cards(game, bot_state, q)
 
                 case QueryDistributeTroops() as q:
-                    return handle_distribute_troops(game, bot_state, q)
+                    return handle_distribute_troops(game, bot_state, q, mapNetwork)
 
                 case QueryAttack() as q:
                     return handle_attack(game, bot_state, q, mapNetwork)
