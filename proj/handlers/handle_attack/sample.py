@@ -5,14 +5,34 @@ from risk_shared.records.moves.move_attack import MoveAttack
 from risk_shared.records.moves.move_attack_pass import MoveAttackPass
 
 from data_structures.bot_state import BotState
+from data_structures.mapnetwork import MapNetwork
 
-def handle_attack(game: Game, bot_state: BotState, query: QueryAttack) -> Union[MoveAttack, MoveAttackPass]:
+def handle_attack(game: Game, bot_state: BotState, query: QueryAttack, mapNetwork: MapNetwork) -> Union[MoveAttack, MoveAttackPass]:
     """After the troop phase of your turn, you may attack any number of times until you decide to
     stop attacking (by passing). After a successful attack, you may move troops into the conquered
     territory. If you eliminated a player you will get a move to redeem cards and then distribute troops."""
 
-    # Attack anyone.
+    player_list = list(range(5))
+    other_players = list(set(player_list) - {game.state.me.player_id})
+
     my_territories = game.state.get_territories_owned_by(game.state.me.player_id)
+    my_territories_model = [game.state.territories[x] for x in my_territories]
+    #get all the information into the map
+    for i in my_territories:
+        mapNetwork.set_node_owner(i,'me')
+    for i in my_territories_model:
+        mapNetwork.set_node_troops(i.territory_id, i.troops)
+
+    for i in other_players:
+        enemy_territories = game.state.get_territories_owned_by (i)
+        enemy_territories_model = [game.state.territories[x] for x in enemy_territories]
+        for j in enemy_territories:
+            mapNetwork.set_node_owner(j, str(i))
+        for j in enemy_territories_model:
+            mapNetwork.set_node_troops(j.territory_id, j.troops)
+
+    
+    # Attack anyone.
     def attack_if_possible(territories: list[int]):
         for candidate_target in territories:
             candidate_attackers = list(set(game.state.map.get_adjacent_to(candidate_target)) & set(my_territories))
