@@ -56,12 +56,24 @@ for group, nodes in continents.items():
     for node in nodes:
         G.nodes[node]['group'] = group
 
-for i in range(1,6):   
-    G.nodes[i]['owner'] = 'me'
-for i in range(7,30):
-    G.nodes[i]['owner'] = '0'
-for i in range(6,12):
-    G.nodes[i]['troopers'] = 5
+G.nodes[5]['owner'] = '0'
+G.nodes[1]['owner'] = '0'
+G.nodes[6]['owner'] = '0'
+G.nodes[2]['owner'] = '0'
+G.nodes[30]['owner'] = '0'
+G.nodes[31]['owner'] = '0'
+G.nodes[29]['owner'] = '0'
+G.nodes[26]['owner'] = '0'
+G.nodes[35]['owner'] = '0'
+G.nodes[17]['owner'] = '0'
+G.nodes[20]['owner'] = '0'
+G.nodes[40]['owner'] = '0'
+G.nodes[41]['owner'] = '0'
+G.nodes[39]['owner'] = '0'
+
+for i in range(10, 30):
+    G.nodes[i]['troops'] = 10
+
 
 
 
@@ -72,19 +84,81 @@ for i in range(6,12):
 
 # k = find_most_clustered_nodes()
 # print(k)
-def find_max_troop_neighboring_node(enemy_nodes = range(7,30)):
-    max_my_troops = -1
-    max_troop_node = None
+my_territories = [node for node in G.nodes if G.nodes[node]['owner'] == '0']
+
+def find_nexus_node():
+    max_owner_none_neighbors = -1
+    min_avg_neighbor_degree = float('inf')
+    nexus_node = None
     
-    for enemy_node in enemy_nodes:
-        adj = G.neighbors(enemy_node)
-        for neighbor in adj:
-            if G.nodes[node]['owner'] == 'me':
-                troops =  G.nodes[node]['troops']
-                if troops > max_my_troops:
-                    max_my_troops = troops
-                    max_troop_node = neighbor
+    for node in G.nodes:
+        if G.nodes[node]['owner'] is None:
+            neighbors = list(G.neighbors(node))
+            owner_none_neighbors = sum(1 for neighbor in neighbors if G.nodes[neighbor]['owner'] is None)
+            avg_neighbor_degree = sum(G.degree(neighbor) for neighbor in neighbors) / len(neighbors) if neighbors else float('inf')
+            
+            if (owner_none_neighbors > max_owner_none_neighbors or
+                (owner_none_neighbors == max_owner_none_neighbors and avg_neighbor_degree < min_avg_neighbor_degree)):
+                max_owner_none_neighbors = owner_none_neighbors
+                min_avg_neighbor_degree = avg_neighbor_degree
+                nexus_node = node
     
-    return max_troop_node
-l = find_max_troop_neighboring_node()
-print(l)
+    return nexus_node
+
+def nexus_function(graph):
+    nodes_with_none_owner = [n for n, attr in graph.nodes(data=True) if attr.get('owner') is None]
+    
+    node_scores = []
+    
+    for node in nodes_with_none_owner:
+        node_degree = graph.degree[node]
+        
+        surrounding_none_owner_count = 0
+        surrounding_low_link_count = 0
+        
+        for neighbor in graph.neighbors(node):
+            neighbor_degree = graph.degree[neighbor]
+            if graph.nodes[neighbor].get('owner') is None:
+                surrounding_none_owner_count += 1
+            surrounding_low_link_count += neighbor_degree
+        
+        # Score calculation: prioritize few links of surrounding nodes -> most owner = none -> many links of this node
+        score = -surrounding_low_link_count + 2 * surrounding_none_owner_count + node_degree
+        node_scores.append((node, score))
+    
+    sorted_nodes = sorted(node_scores, key=lambda x: x[1], reverse=True)
+    return [node for node, score in sorted_nodes]
+
+def calculate_continent_groups(my_territories):
+    
+    con = list(continents.keys())
+    continent_groups = {}
+
+    for continent in con:
+        continent_territories = set(continents[continent])
+        my_continent_territories = set(my_territories) & continent_territories
+        portion = len(my_continent_territories) / len(continent_territories)
+        continent_groups[continent] = portion
+        sorted_continent_groups = sorted(continent_groups.items(), key=lambda x: x[1], reverse=True)
+        
+
+    return sorted_continent_groups
+
+def calculate_enemy_troops_by_continent():
+    enemy_troops_by_continent = {continent: 0 for continent in continents}
+
+    for continent, nodes in continents.items():
+        total_troops = 0
+        for node in nodes:
+            if G.nodes[node].get('owner') != '0':
+                total_troops += G.nodes[node].get('troops', 0)
+        enemy_troops_by_continent[continent] = total_troops
+    
+    sort = sorted(enemy_troops_by_continent.items(), key=lambda x: x[1], reverse=False)
+
+    return sort  
+
+l = find_nexus_node()
+m = nexus_function(G)
+n =calculate_enemy_troops_by_continent()
+print(n)

@@ -18,13 +18,27 @@ def handle_place_initial_troop(game: Game, bot_state: BotState, query: QueryPlac
     for i in my_territories_model:
         mapNetwork.set_node_troops(i.territory_id, i.troops)
     
-    cluster = mapNetwork.get_5cluster()
-    centre = mapNetwork.get_centre()
-    # We will place troops along the territories on our border/cluster if no nexus.
-    border_territories = list(set(cluster)-set(centre))
+    my_cluster = []
+    #check territories and continents
+    my_base_continent = mapNetwork.check_my_ownership()
+    if my_base_continent:
+        my_cluster = list(set(mapNetwork.continents[my_base_continent[0]])&set(my_territories)) #find my territories in the continent
+    else:
+        my_cluster = game.state.get_all_border_territories(my_territories) #any borders
+    # cluster = mapNetwork.get_5cluster()
+    centre = list(set(mapNetwork.get_centre())-set(mapNetwork.bridges_list()))
 
-    min_troops_territory=None
+    # We will place troops along the territories on our border/cluster if no nexus.
+    border_territories = list(set(my_cluster)-set(centre))
+    outer_border = list(set(my_territories)-set(my_cluster))
+
+    if border_territories == None:
+        border_territories = game.state.get_all_border_territories(my_territories)
+        outer_border = game.state.get_all_border_territories(my_territories)
+
+    min_troops_territory= random.sample(border_territories, 1)[0]
     border_territory_models = [game.state.territories[x] for x in border_territories]
+    outer_models = [game.state.territories[x] for x in outer_border]
    
     #This function checks for nearby territories and then strengthen the troops if nearby are increasing their numbers
     weak_list = []
@@ -33,18 +47,16 @@ def handle_place_initial_troop(game: Game, bot_state: BotState, query: QueryPlac
         enemies_adjacent = list(set(adjacent_to_border) - set(my_territories))
         enemies_model = [game.state.territories[x] for x in enemies_adjacent]
         for k in enemies_model:
-            if i.troops < k.troops:
+            if i.troops <= k.troops:
                 weak_list.append(i.territory_id)
     
     next_list = []
-    outer_border = list(set(my_territories) - set(cluster))
-    outer_models = [game.state.territories[x] for x in outer_border]
     for i in outer_models:
         adjacent_to_border = game.state.get_all_adjacent_territories([i.territory_id])
         enemies_adjacent = list(set(adjacent_to_border) - set(my_territories))
         enemies_model = [game.state.territories[x] for x in enemies_adjacent]
         for k in enemies_model:
-            if i.troops < k.troops:
+            if i.troops < k.troops-1:
                 next_list.append(i.territory_id)
 
     if weak_list:

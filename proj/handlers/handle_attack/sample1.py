@@ -31,6 +31,16 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack, mapNetwor
         for j in enemy_territories_model:
             mapNetwork.set_node_troops(j.territory_id, j.troops)
 
+
+    # def attack_strongest(territories: list[int]) -> Optional[MoveAttack]:
+    #     # We will attack the weakest territory from the list.
+    #     territories = sorted(territories, key=lambda x: game.state.territories[x].troops)
+    #     for candidate_target in territories:
+    #         candidate_attackers = sorted(list(set(game.state.map.get_adjacent_to(candidate_target)) & set(my_territories)), key=lambda x: game.state.territories[x].troops, reverse=False)
+    #         for candidate_attacker in candidate_attackers:
+    #             if game.state.territories[candidate_attacker].troops >= 4 and game.state.territories[candidate_target].troops <= game.state.territories[candidate_attacker].troops//2:
+    #                 return game.move_attack(query, candidate_attacker, candidate_target, min(3, game.state.territories[candidate_attacker].troops - 1))
+    
     def attack_weakest(territories: list[int]) -> Optional[MoveAttack]:
         # We will attack the weakest territory from the list.
         territories = sorted(territories, key=lambda x: game.state.territories[x].troops)
@@ -45,16 +55,15 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack, mapNetwor
                         troops_ahead.append(troops)
                     if max(troops) < game.state.territories[candidate_attacker].troops:
                         return game.move_attack(query, candidate_attacker, candidate_target, min(3, game.state.territories[candidate_attacker].troops - 1))
-    
+
     '''game_phase'''
     game_state = len(game.state.recording) #game starts at 133
     avg = mapNetwork.get_average_troops() #average troops per players
     domination = len(mapNetwork.check_my_ownership()) + len(mapNetwork.check_ownership()) #how many continents are near conquered already
 
     # early game
-    if avg <=30 or game_state < 300 or domination <=2:
-    #     
-    
+    # if avg <=30 or game_state < 300 or domination <=2:
+    #     print('k')
     # # mid game
     if avg <=60 or game_state <550 and domination <=4:
         weakest_territories = sorted(my_territories, key=lambda x: game.state.territories[x].troops, reverse=True)

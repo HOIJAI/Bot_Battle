@@ -70,13 +70,13 @@ def main():
                     return handle_attack(game, bot_state, q, mapNetwork)
 
                 case QueryTroopsAfterAttack() as q:
-                    return handle_troops_after_attack(game, bot_state, q)
+                    return handle_troops_after_attack(game, bot_state, q, mapNetwork)
 
                 case QueryDefend() as q:
                     return handle_defend(game, bot_state, q)
 
                 case QueryFortify() as q:
-                    return handle_fortify(game, bot_state, q)
+                    return handle_fortify(game, bot_state, q, mapNetwork)
         
         # Send the move to the engine.
         game.send_move(choose_move(query))

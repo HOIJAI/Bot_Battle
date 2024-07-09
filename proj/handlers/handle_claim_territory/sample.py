@@ -23,7 +23,7 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
 
     nexus_list = mapNetwork.nexus()
     if len(nexus_list)!=0:
-        curr_nexus = random.sample(nexus_list, 1)[0]
+        curr_nexus = nexus_list[0]
     #first selection
     if len(unclaimed_territories) > 37:
         selected_territory = curr_nexus

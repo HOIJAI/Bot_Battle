@@ -81,28 +81,39 @@ class MapNetwork:
         return connected_to_another_continent
     
     def nexus(self):
-        nodes_with_none_owner = [n for n, attr in self.G.nodes(data=True) if attr.get('owner') is None]
+        # Step 1: Calculate degree for each node
+        node_degrees = {node: degree for node, degree in nx.degree(self.G)}
+
+        # Step 2: Filter nodes where owner is None
+        nodes_with_owner_none = [node for node in self.G.nodes if self.G.nodes[node].get('owner') is None]
+
+        # Step 3: Sort nodes by degree in descending order
+        sorted_nodes = sorted(nodes_with_owner_none, key=lambda node: node_degrees[node], reverse=True)
+
+        # Step 4: Find nodes with the minimum links (border nodes)
+        if not nodes_with_owner_none:
+            return []  # Return empty list if there are no nodes with owner as None
         
-        node_scores = []
-        
-        for node in nodes_with_none_owner:
-            node_degree = self.G.degree(node) # type: ignore
-            
-            surrounding_none_owner_count = 0
-            surrounding_low_link_count = 0
-            
-            for neighbor in self.G.neighbors(node):
-                neighbor_degree = self.G.degree[neighbor] # type: ignore
-                if self.G.nodes[neighbor].get('owner') is None:
-                    surrounding_none_owner_count += 1
-                surrounding_low_link_count += neighbor_degree
-            
-            # Score calculation: prioritize few links of surrounding nodes -> most owner = none -> many links of this node
-            score = -surrounding_low_link_count + 2 * surrounding_none_owner_count + node_degree
-            node_scores.append((node, score))
-        
-        sorted_nodes = sorted(node_scores, key=lambda x: x[1], reverse=True)
-        return [node for node, score in sorted_nodes]
+        min_degree = min(node_degrees[node] for node in nodes_with_owner_none)
+        border_nodes = [node for node in nodes_with_owner_none if node_degrees[node] == min_degree]
+
+        # Step 5: Find nexus nodes that are connected to border nodes
+        nexus_connected_to_border = []
+
+        for nexus_node in sorted_nodes:
+            connected_to_border = [node for node in self.G.neighbors(nexus_node) if node in border_nodes]
+            if connected_to_border:
+                nexus_connected_to_border.append((nexus_node, connected_to_border))
+
+        # Step 6: Verify that most connections between nexus and border nodes are owner=None
+        valid_nexus_nodes = []
+
+        for nexus, connected_border in nexus_connected_to_border:
+            count_owner_none = sum(1 for neighbor in connected_border if self.G.nodes[neighbor].get('owner') is None)
+            if count_owner_none / len(connected_border) >= 0.8:  # Adjust threshold as needed
+                valid_nexus_nodes.append(nexus)
+
+        return valid_nexus_nodes
 
     #get adjacent territories (list of adj)
     def get_neighbors(self, node):
@@ -138,25 +149,11 @@ class MapNetwork:
                 if owner == 'me':
                     owner_count['me'] += 1
 
-            if owner_count['me'] / len(nodes) >= 0.6:
+            if owner_count['me'] / len(nodes) >= 0.7:
                 results.append(continent)
         # Sort results based on the length of the continent (number of nodes)
         results.sort(key=lambda x: len(self.continents[x]), reverse=True)
         return results
-    
-    def calculate_continent_groups(self, territories_list):
-        con = list(self.continents.keys())
-        continent_groups = {}
-
-        for continent in con:
-            continent_territories = set(self.continents[continent])
-            my_continent_territories = set(territories_list) & continent_territories
-            portion = len(my_continent_territories) / len(continent_territories)
-            continent_groups[continent] = portion
-
-        sorted_continent_groups = sorted(continent_groups.items(), key=lambda x: x[1], reverse=True)
-        
-        return sorted_continent_groups #return list of tuples
     
     #get the 5 nodes closest
     def get_5cluster(self):
@@ -208,17 +205,3 @@ class MapNetwork:
             return [my_node, enemy_node]
         else:
             return None #need to check if my_node == None
-        
-    def calculate_enemy_troops_by_continent(self):
-        enemy_troops_by_continent = {continent: 0 for continent in self.continents}
-
-        for continent, nodes in self.continents.items():
-            total_troops = 0
-            for node in nodes:
-                if self.G.nodes[node].get('owner') != 'me':
-                    total_troops += self.G.nodes[node].get('troops', 0)
-            enemy_troops_by_continent[continent] = total_troops
-        
-        sort = sorted(enemy_troops_by_continent.items(), key=lambda x: x[1], reverse=False)
-
-        return sort  
