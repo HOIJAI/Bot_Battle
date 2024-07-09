@@ -31,6 +31,23 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack, mapNetwor
         for j in enemy_territories_model:
             mapNetwork.set_node_troops(j.territory_id, j.troops)
 
+
+    '''game_phase'''
+    gamestate = len(game.state.recording) #game starts at 133
+    avg = mapNetwork.get_average_troops() #average troops per players
+    domination = len(mapNetwork.check_my_ownership()) + len(mapNetwork.check_ownership()) #how many continents are near conquered already
+
+    # early game
+    if avg <=30 or gamestate < 300 or domination <=2:
+        print('k')
+    # mid game
+    elif avg <=60 or gamestate <550 or domination <=4:
+        print('k')
+    # late game
+    else:
+        print('k')
+
+
     
     # Attack anyone.
     def attack_if_possible(territories: list[int]):

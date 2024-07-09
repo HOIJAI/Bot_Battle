@@ -21,27 +21,26 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
     for i in my_territories:
         mapNetwork.set_node_owner(i,'me')
 
-    # a random point just in case
     nexus_list = mapNetwork.nexus()
     if len(nexus_list)!=0:
-        curr_nexus = nexus_list[0]
+        curr_nexus = random.sample(nexus_list, 1)[0]
     #first selection
     if len(unclaimed_territories) > 37:
-        selected_territory = nexus_list[0]
+        selected_territory = curr_nexus
 
     #next 4 selections surrounding the nexus, if got broken choose a new nexus
     elif 37 >= len(unclaimed_territories) > 17:
         adjacent_territories = game.state.get_all_adjacent_territories(my_territories)
         claimed = 0
         for i in adjacent_territories:
-            if mapNetwork.get_node_property(i, 'owner') == 'me':
+            if mapNetwork.get_node_owner(i) != None and mapNetwork.get_node_owner(i) != 'me':
                 claimed +=1
         
         available = list(set(unclaimed_territories) & set(adjacent_territories))
         #choose the ones with the least link (easier to defend)
-        if len(available)!=0 and len(available) + claimed >= len(adjacent_territories)-1:
+        if len(available)!=0 : #and len(available) + claimed >= len(adjacent_territories)-1
             # Calculate the number of connections for each node in the available list
-            links = {i: mapNetwork.get_num_connections(i) for i in available}
+            links = {i: len(mapNetwork.get_neighbors(i)) for i in available}
             # Find the node with the least links
             selected_territory = min(links, key=lambda k: links[k])
         #else find a new nexus since the current one is compromised

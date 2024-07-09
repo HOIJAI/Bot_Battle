@@ -51,6 +51,23 @@ class MapNetwork:
     def set_node_owner(self, node, value):
         self.G.nodes[node]['owner'] = value
     
+    #get the properties of the territory
+    def get_node_troops(self, node):
+        return self.G.nodes[node]['troops']
+    
+    def get_node_owner(self, node):
+        return self.G.nodes[node]['owner']
+    
+    def get_average_troops(self):
+        all_territories = list(range(42))
+        sum_troops = 0
+        alive = set()
+        for i in all_territories:
+            sum_troops += self.get_node_troops(i)
+            alive.add(self.get_node_owner(i))
+        avg = sum_troops/len(alive)
+        return int(avg)
+
     #find all the nodes that have bridges that connect between territories
     def bridges_list(self):
         # Find nodes connected to another continent
@@ -64,92 +81,110 @@ class MapNetwork:
         return connected_to_another_continent
     
     def nexus(self):
-        # Calculate degree for each node
+        # Step 1: Calculate degree for each node
         node_degrees = {node: degree for node, degree in nx.degree(self.G)}
 
-        # Filter nodes where owner is None
-        nodes_with_owner_none = [node for node in self.G.nodes if self.G.nodes[node]['owner'] is None]
+        # Step 2: Filter nodes where owner is None
+        nodes_with_owner_none = [node for node in self.G.nodes if self.G.nodes[node].get('owner') is None]
 
-        # Sort nodes by degree in descending order
-        nexus_nodes = sorted(nodes_with_owner_none, key=lambda node: node_degrees[node], reverse=True)
+        # Step 3: Sort nodes by degree in descending order
+        sorted_nodes = sorted(nodes_with_owner_none, key=lambda node: node_degrees[node], reverse=True)
 
-        # Find nodes (border_nodes) with the minimum links (owner=None)
+        # Step 4: Find nodes with the minimum links (border nodes)
+        if not nodes_with_owner_none:
+            return []  # Return empty list if there are no nodes with owner as None
+        
         min_degree = min(node_degrees[node] for node in nodes_with_owner_none)
         border_nodes = [node for node in nodes_with_owner_none if node_degrees[node] == min_degree]
 
-        # Find nexus nodes that are connected to border nodes
+        # Step 5: Find nexus nodes that are connected to border nodes
         nexus_connected_to_border = []
 
-        for nexus_node in nexus_nodes:
+        for nexus_node in sorted_nodes:
             connected_to_border = [node for node in self.G.neighbors(nexus_node) if node in border_nodes]
             if connected_to_border:
                 nexus_connected_to_border.append((nexus_node, connected_to_border))
 
-        # Verify that most connections between nexus and border nodes are owner=None
+        # Step 6: Verify that most connections between nexus and border nodes are owner=None
         valid_nexus_nodes = []
 
         for nexus, connected_border in nexus_connected_to_border:
-            count_owner_none = sum(1 for neighbor in connected_border if self.G.nodes[neighbor]['owner'] is None)
+            count_owner_none = sum(1 for neighbor in connected_border if self.G.nodes[neighbor].get('owner') is None)
             if count_owner_none / len(connected_border) >= 0.8:  # Adjust threshold as needed
                 valid_nexus_nodes.append(nexus)
 
-        return(valid_nexus_nodes)
+        return valid_nexus_nodes
 
-    #get the properties of the territory, num = num of troops, owner = owned by who
-    def get_node_property(self, node, property_name):
-        return self.G.nodes[node].get(property_name, None)
-
-    #get adjacent territories
+    #get adjacent territories (list of adj)
     def get_neighbors(self, node):
         return list(self.G.neighbors(node))
 
-    #get number of territories linked to a node
-    def get_num_connections(self, node):
-        return list(self.G.adj[node])
-
-    #get the number of territories owned by the owner
+    #get the number of territories owned by the owner (list)
     def nodes_with_same_owner(self, owner):
-        return [node for node, data in self.G.nodes(data=True) if data.get('owner') == owner]
+        return [node for node in self.G.nodes if self.G.nodes[node]['owner'] == owner]
     
-    #get the player who got the most territories in specific continents (>70% of owning the entire continent):
+    #get the player who got the most territories in specific continents (>75% of owning the entire continent) --> list (continent, owner):
     def check_ownership(self):
-        results = {}
+        results = []
         for continent, nodes in self.continents.items():
             owner_count = {}
             for node in nodes:
-                owner = self.G.nodes[node]['owner']
-                if owner:
+                owner = self.get_node_owner(node)
+                if owner != 'me':
                     if owner not in owner_count:
                         owner_count[owner] = 0
                     owner_count[owner] += 1
             for owner, count in owner_count.items():
                 if count / len(nodes) >= 0.75:
-                    results[continent] = owner
+                    results.append((continent, owner))
+                    break 
         return results
     
-    def get_cluster(self):
-        nodes_owned_by_me = [node for node in self.G.nodes if self.G.nodes[node].get('owner') == 'me']
+    def check_my_ownership(self):
+        results = []
+        for continent, nodes in self.continents.items():
+            owner_count = {'me': 0}  # Initialize owner count for 'me'
+            for node in nodes:
+                owner = self.G.nodes[node]['owner']
+                if owner == 'me':
+                    owner_count['me'] += 1
+
+            if owner_count['me'] / len(nodes) >= 0.7:
+                results.append(continent)
+        # Sort results based on the length of the continent (number of nodes)
+        results.sort(key=lambda x: len(self.continents[x]), reverse=True)
+        return results
+    
+    #get the 5 nodes closest
+    def get_5cluster(self):
+        nodes_owned_by_me = self.nodes_with_same_owner('me')
         #Calculate clustering coefficients for these nodes
-        clustering_coefficients = nx.clustering(self.G, nodes_owned_by_me)
+        clustering_coeffs = {}
+        for i in nodes_owned_by_me:
+            clustering_coeffs[i] = nx.clustering(self.G, nodes=i)
 
         #Find the top 5 nodes with the highest clustering coefficients
-        top_5_nodes = sorted(clustering_coefficients, key=clustering_coefficients.get, reverse=True)[:5] # type: ignore
+        sorted_nodes = sorted(clustering_coeffs.items(), key=lambda x: x[1], reverse=True)
+        top_5_nodes = [node for node, _ in sorted_nodes[:5]]
 
         return top_5_nodes #list
     
-    def get_nexus (self): #recursion to find the centre
-        nodes_owned_by_me = [node for node in self.G.nodes if self.G.nodes[node].get('owner') == 'me']
+    #return all the centre nodes that are surrounded by me
+    def get_centre (self): #recursion to find the centre
+        nodes_owned_by_me = self.nodes_with_same_owner('me')
         # Check if there is a node surrounded by nodes also owned by 'me'
-        surrounded_nodes = []
+        centre_nodes = []
         for node in nodes_owned_by_me:
-            neighbors = self.G.neighbors(node)
-            if all(self.G.nodes[neighbor].get('owner') == 'me' for neighbor in neighbors):
-                surrounded_nodes.append(node)
-        return surrounded_nodes
+            neighbors = self.get_neighbors(node)
+            if all(self.get_node_owner(neighbor) == 'me' for neighbor in neighbors):
+                centre_nodes.append(node)
+        return centre_nodes
 
-    def find_max_troop_adjacent_node(self, continent, owner):
-        max_troops = -1
-        best_node = None
+    #when poking a continent, look for the minimum land I can take without spending much troops
+    def find_min_troop_adjacent_node(self, continent, owner): #find the most number of my troops in the adjacent
+        min_enemies_troops = float('inf')
+        enemy_node = None
+        my_node = None
         
         # Get the list of nodes in the continent
         continent_nodes = self.continents[continent]
@@ -157,16 +192,16 @@ class MapNetwork:
         # Identify nodes in the continent owned by 'me'
         nodes_owned_by_me = self.nodes_with_same_owner('me')
         
-        # Iterate through nodes owned by 'me'
         for node in nodes_owned_by_me:
-            # Check adjacent nodes
-            for neighbor in self.G.neighbors(node):
-                # Check if neighbor is in the continent and owned by the specified owner
-                if neighbor in continent_nodes and self.G.nodes[neighbor].get('owner') == '0':
-                    # Get the number of troops
-                    num_troops = self.G.nodes[neighbor].get('troops', 0)
-                    # Update the best node if this one has more troops
-                    if num_troops > max_troops:
-                        max_troops = num_troops
-                        best_node = [node, neighbor]
-        return best_node
+            adj = self.G.neighbors(node)
+            for i in adj:
+                if self.get_node_owner(i) == owner and i in continent_nodes:
+                    if self.get_node_troops(i)<min_enemies_troops:
+                        min_enemies_troops = self.get_node_troops(i)
+                        enemy_node = i
+                        my_node = node
+                    
+        if my_node != None and enemy_node != None:
+            return [my_node, enemy_node]
+        else:
+            return None #need to check if my_node == None
