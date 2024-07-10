@@ -44,7 +44,7 @@ def handle_claim_territory(game: Game, bot_state: BotState, query: QueryClaimTer
             # Find the node with the least links
             selected_territory = min(links, key=lambda k: links[k])
         #else find a new nexus since the current one is compromised
-        elif len(available) + claimed <= 2:
+        elif len(available) + claimed < 2:
             selected_territory = nexus_list[0]
         else:
             selected_territory = sorted(unclaimed_territories, key=lambda x: len(game.state.map.get_adjacent_to(x)), reverse=True)[0]

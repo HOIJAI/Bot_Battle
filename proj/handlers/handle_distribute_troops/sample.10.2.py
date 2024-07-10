@@ -47,54 +47,44 @@ def handle_distribute_troops(game: Game, bot_state: BotState, query: QueryDistri
     domination = len(mapNetwork.check_my_ownership()) + len(mapNetwork.check_ownership()) #how many continents are near conquered already
     # locate my continent
 
-    my_base_continent = mapNetwork.calculate_continent_portion_owned(my_territories)[0][0] #string of the name
-    my_base_percent = mapNetwork.calculate_continent_portion_owned(my_territories)[0][1]
-    
-    base_territories = list(set(my_territories)&set(mapNetwork.continents[my_base_continent]))
-    all_borders = game.state.get_all_border_territories(my_territories) #my territories in that base
+    my_base_continent = mapNetwork.calculate_continent_groups(my_territories)[0][0] #string of the name
+    base_territories = list(set(my_territories)&set(mapNetwork.continents[my_base_continent])) #my territories in that base
     border_to_base = game.state.get_all_border_territories(base_territories) #those are MINE
     enemies_around_base = list(set(game.state.get_all_adjacent_territories(border_to_base))-set(my_territories))
-    
     weakest_continents = mapNetwork.calculate_enemy_troops_by_continent() #list of tuples [('NA',0)]
 
     remaining_troops = total_troops
     # check if any enemy border territories have *2 troops than mine, if yes, place troops until my territories = enemies if possible
     stationed_troops = []
-    if my_base_percent!=1:
-        for j in border_to_base:
-            stationed_troops.append((j, mapNetwork.get_node_troops(j)))
-    else:
-        for j in all_borders:
-            stationed_troops.append((j, mapNetwork.get_node_troops(j)))
+    for j in border_to_base:
+        stationed_troops.append((j, mapNetwork.get_node_troops(j)))
     stationed_troops = sorted(stationed_troops, key=lambda x: x[1], reverse=True)
 
     # early game
     if avg <=30 or game_state < 300 and domination <=3:
-        if my_base_percent!=1: #continent not conquered
-            for i in enemies_around_base:
-                enemy_troops = mapNetwork.get_node_troops(i)
-                adj_nodes = mapNetwork.get_neighbors(i)
-                for node, troops in stationed_troops:
-                    if node in adj_nodes and troops*2 <= enemy_troops and total_troops > (enemy_troops-troops):
-                        distributions[node] += (enemy_troops-troops)
-                        remaining_troops -= (enemy_troops-troops)
+        for i in enemies_around_base:
+            enemy_troops = mapNetwork.get_node_troops(i)
+            adj_nodes = mapNetwork.get_neighbors(i)
+            for node, troops in stationed_troops:
+                if node in adj_nodes and troops*2 <= enemy_troops and total_troops > (enemy_troops-troops):
+                    distributions[node] += (enemy_troops-troops)
+                    remaining_troops -= (enemy_troops-troops)
                     break
                 break
+            break
 
-        for i in weakest_continents: #if people in there
+        for i in weakest_continents:
             for node, troops in stationed_troops:
-                adj_to_station = mapNetwork.get_neighbors(node)
-                for j in adj_to_station:
-                    if mapNetwork.G.nodes[j]['group'] == i[0]:
-                        distributions[node]+= remaining_troops
-                        remaining_troops = 0
+                if mapNetwork.G.nodes[node]['group'] == i[0]:
+                    distributions[node]+= remaining_troops
+                    remaining_troops = 0
                     break
                 break
             break
 
     # mid game
     elif avg <=60 or game_state < 550 and domination <=4:
-        if my_base_percent!=1: #continent not conquered
+        if my_base_continent[1]!=1: #continent not conquered
             for i in enemies_around_base:
                 enemy_troops = mapNetwork.get_node_troops(i)
                 adj_nodes = mapNetwork.get_neighbors(i)
@@ -102,16 +92,16 @@ def handle_distribute_troops(game: Game, bot_state: BotState, query: QueryDistri
                     if node in adj_nodes and troops*2 <= enemy_troops and total_troops > (enemy_troops-troops):
                         distributions[node] += (enemy_troops-troops)
                         remaining_troops -= (enemy_troops-troops)
+                        break
                     break
                 break
         
+
         for i in weakest_continents:
             for node, troops in stationed_troops:
-                adj_to_station = mapNetwork.get_neighbors(node)
-                for j in adj_to_station:
-                    if mapNetwork.G.nodes[j]['group'] == i[0]:
-                        distributions[node]+= remaining_troops
-                        remaining_troops = 0
+                if mapNetwork.G.nodes[node]['group'] == i[0]:
+                    distributions[node]+= remaining_troops
+                    remaining_troops = 0
                     break
                 break
             break
@@ -121,29 +111,18 @@ def handle_distribute_troops(game: Game, bot_state: BotState, query: QueryDistri
 #       #doomstack
         #find enemies with most territories owned, if nearby, all in troops to the weakest link if my border node + all troops = *2 troops 
         # else all in troops towards the nearby weakest continent
-        if my_base_percent!=1: #continent not conquered
-            for i in enemies_around_base:
-                enemy_troops = mapNetwork.get_node_troops(i)
-                adj_nodes = mapNetwork.get_neighbors(i)
-                for node, troops in stationed_troops:
-                    if node in adj_nodes and troops*2 <= enemy_troops and total_troops > (enemy_troops-troops):
-                        distributions[node] += (enemy_troops-troops)
-                        remaining_troops -= (enemy_troops-troops)
-                    break
-                break
-
         for i in weakest_continents:
-            for node, troops in stationed_troops:
-                adj_to_station = mapNetwork.get_neighbors(node)
-                for j in adj_to_station:
-                    if mapNetwork.G.nodes[j]['group'] == i[0]:
-                        distributions[node]+= remaining_troops
-                        remaining_troops = 0
-                    break
+            for j in border_to_base:
+                stationed_troops = []
+                for k in border_to_base:
+                    stationed_troops.append((k, mapNetwork.get_node_troops(k)))
+                stationed_troops = sorted(stationed_troops, key=lambda x: x[1], reverse=True)
+
+                if mapNetwork.G.nodes[j]['group'] == i[0]:
+                    distributions[stationed_troops[0][0]]+=total_troops
                 break
             break
     
-    # The leftover troops will be put some territory (we don't care)
-    distributions[stationed_troops[0][0]] += remaining_troops
+    
 
     return game.move_distribute_troops(query, distributions)

@@ -13,63 +13,65 @@ def handle_fortify(game: Game, bot_state: BotState, query: QueryFortify, mapNetw
     """At the end of your turn, after you have finished attacking, you may move a number of troops between
     any two of your territories (they must be adjacent)."""
 
-    # We will always fortify towards the most powerful player (player with most troops on the map) to defend against them.
+    player_list = list(range(5))
+    other_players = list(set(player_list) - {game.state.me.player_id})
+
     my_territories = game.state.get_territories_owned_by(game.state.me.player_id)
-    total_troops_per_player = {}
-    for player in game.state.players.values():
-        total_troops_per_player[player.player_id] = sum([game.state.territories[x].troops for x in game.state.get_territories_owned_by(player.player_id)])
+    my_territories_model = [game.state.territories[x] for x in my_territories]
+    #get all the information into the map
+    for i in my_territories:
+        mapNetwork.set_node_owner(i,'me')
+    for i in my_territories_model:
+        mapNetwork.set_node_troops(i.territory_id, i.troops)
 
-    most_powerful_player = max(total_troops_per_player.items(), key=lambda x: x[1])[0]
+    for i in other_players:
+        enemy_territories = game.state.get_territories_owned_by (i)
+        enemy_territories_model = [game.state.territories[x] for x in enemy_territories]
+        for j in enemy_territories:
+            mapNetwork.set_node_owner(j, str(i))
+        for j in enemy_territories_model:
+            mapNetwork.set_node_troops(j.territory_id, j.troops)
 
-    # If we are the most powerful, we will pass.
-    if most_powerful_player == game.state.me.player_id:
-        return game.move_fortify_pass(query)
-    
-    # Otherwise we will find the shortest path between our territory with the most troops
-    # and any of the most powerful player's territories and fortify along that path.
-    candidate_territories = game.state.get_all_border_territories(my_territories)
-    most_troops_territory = max(candidate_territories, key=lambda x: game.state.territories[x].troops)
+    #if some troops stuck inside, move them up (from shallow to deep)
+    #else check all the border nodes and see which one < enemy troops, and see if adjacent have troops, move until == enemy troops
+    #else pass
 
-    # To find the shortest path, we will use a custom function.
-    shortest_path = find_shortest_path_from_vertex_to_set(game, most_troops_territory, set(game.state.get_territories_owned_by(most_powerful_player)))
-    # We will move our troops along this path (we can only move one step, and we have to leave one troop behind).
-    # We have to check that we can move any troops though, if we can't then we will pass our turn.
-    if len(shortest_path) > 0 and game.state.territories[most_troops_territory].troops > 1:
+    all_borders = game.state.get_all_border_territories(my_territories)
+    centre = list(set(my_territories) - set(all_borders))
+    behind_borders =  game.state.get_all_border_territories(centre)
+    max_troops_behind = 0
+    troops_behind_node = None
+
+    min_troops_ahead = 0
+    troops_ahead_node = None
+
+    for i in behind_borders:
+        if mapNetwork.get_node_troops(i) > max_troops_behind:
+            max_troops_behind = mapNetwork.get_node_troops(i)
+            troops_behind_node = i
+
+
+    if max_troops_behind > 3:
+        next_to_max = list(set(mapNetwork.get_neighbors(troops_behind_node))&set(all_borders))
+        for i in next_to_max:
+            adj_to_this_border_node = list(set(mapNetwork.get_neighbors(i))-set(my_territories))
+            for j in adj_to_this_border_node: #find the most troops that are near this border
+                if mapNetwork.get_node_troops(j) > min_troops_ahead: #this is max troops in front of border
+                    min_troops_ahead = mapNetwork.get_node_troops(j)
+                    troops_ahead_node = i
+
+    else:
+        for i in centre:
+            if mapNetwork.get_node_troops(i) > max_troops_behind:
+                max_troops_behind = mapNetwork.get_node_troops(i)
+                troops_behind_node = i
+        list_ahead_node = mapNetwork.shortest_path_to_border(my_territories, troops_behind_node)
+        if list_ahead_node:
+            troops_ahead_node = list_ahead_node[1]
         
-        
-        return game.move_fortify(query, shortest_path[0], shortest_path[1], game.state.territories[most_troops_territory].troops - 1)
+
+    if troops_behind_node and troops_ahead_node:
+        return game.move_fortify(query, troops_behind_node, troops_ahead_node, max_troops_behind - 1)
     else:
         return game.move_fortify_pass(query)
-
-
-
-def find_shortest_path_from_vertex_to_set(game: Game, source: int, target_set: set[int]) -> list[int]:
-    """Used in move_fortify()."""
-
-    # We perform a BFS search from our source vertex, stopping at the first member of the target_set we find.
-    queue = deque()
-    queue.appendleft(source)
-
-    current = queue.pop()
-    parent = {}
-    seen = {current: True}
-
-    while len(queue) != 0:
-        if current in target_set:
-            break
-
-        for neighbour in game.state.map.get_adjacent_to(current):
-            if neighbour not in seen:
-                seen[neighbour] = True
-                parent[neighbour] = current
-                queue.appendleft(neighbour)
-
-        current = queue.pop()
-
-    path = []
-    while current in parent:
-        path.append(current)
-        current = parent[current]
-
-    return path[::-1]
 

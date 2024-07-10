@@ -1,4 +1,5 @@
 import networkx as nx
+from collections import defaultdict, deque
 # import matplotlib.pyplot as plt
 
 # Create an empty graph
@@ -56,22 +57,22 @@ for group, nodes in continents.items():
     for node in nodes:
         G.nodes[node]['group'] = group
 
-G.nodes[5]['owner'] = '0'
-G.nodes[1]['owner'] = '0'
-G.nodes[6]['owner'] = '0'
-G.nodes[2]['owner'] = '0'
+# G.nodes[5]['owner'] = '0'
+# G.nodes[1]['owner'] = '0'
+# G.nodes[6]['owner'] = '0'
+# G.nodes[2]['owner'] = '0'
 G.nodes[30]['owner'] = '0'
 G.nodes[31]['owner'] = '0'
 G.nodes[29]['owner'] = '0'
 G.nodes[26]['owner'] = '0'
 G.nodes[35]['owner'] = '0'
-G.nodes[17]['owner'] = '0'
-G.nodes[20]['owner'] = '0'
+G.nodes[24]['owner'] = '0'
+G.nodes[38]['owner'] = '0'
 G.nodes[40]['owner'] = '0'
 G.nodes[41]['owner'] = '0'
 G.nodes[39]['owner'] = '0'
 
-for i in range(10, 30):
+for i in range(1, 40):
     G.nodes[i]['troops'] = 10
 
 
@@ -86,79 +87,126 @@ for i in range(10, 30):
 # print(k)
 my_territories = [node for node in G.nodes if G.nodes[node]['owner'] == '0']
 
-def find_nexus_node():
-    max_owner_none_neighbors = -1
-    min_avg_neighbor_degree = float('inf')
-    nexus_node = None
-    
-    for node in G.nodes:
-        if G.nodes[node]['owner'] is None:
-            neighbors = list(G.neighbors(node))
-            owner_none_neighbors = sum(1 for neighbor in neighbors if G.nodes[neighbor]['owner'] is None)
-            avg_neighbor_degree = sum(G.degree(neighbor) for neighbor in neighbors) / len(neighbors) if neighbors else float('inf')
-            
-            if (owner_none_neighbors > max_owner_none_neighbors or
-                (owner_none_neighbors == max_owner_none_neighbors and avg_neighbor_degree < min_avg_neighbor_degree)):
-                max_owner_none_neighbors = owner_none_neighbors
-                min_avg_neighbor_degree = avg_neighbor_degree
-                nexus_node = node
-    
-    return nexus_node
+def bridges_list():
+    # Find nodes connected to another continent
+    connected_to_another_continent = []
+    for u, v in G.edges():
+        if G.nodes[u]['group'] != G.nodes[v]['group']:
+            connected_to_another_continent.append(u)
+            connected_to_another_continent.append(v)
 
-def nexus_function(graph):
-    nodes_with_none_owner = [n for n, attr in graph.nodes(data=True) if attr.get('owner') is None]
+    connected_to_another_continent = list(set(connected_to_another_continent))
+    return connected_to_another_continent
+
+def nexus():
+    nodes_with_none_owner = [n for n, attr in G.nodes(data=True) if attr.get('owner') is None]
+    
+    # Calculate the number of nodes in each continent
+    continent_node_counts = {continent: len(nodes) for continent, nodes in continents.items()}
     
     node_scores = []
     
     for node in nodes_with_none_owner:
-        node_degree = graph.degree[node]
-        
+        node_degree = G.degree(node) # type: ignore
+        continent = G.nodes[node].get('group')
+        continent_size = continent_node_counts[continent]
+
         surrounding_none_owner_count = 0
         surrounding_low_link_count = 0
         
-        for neighbor in graph.neighbors(node):
-            neighbor_degree = graph.degree[neighbor]
-            if graph.nodes[neighbor].get('owner') is None:
+        for neighbor in G.neighbors(node):
+            neighbor_degree = G.degree[neighbor] # type: ignore
+            if G.nodes[neighbor].get('owner') is None:
                 surrounding_none_owner_count += 1
             surrounding_low_link_count += neighbor_degree
         
         # Score calculation: prioritize few links of surrounding nodes -> most owner = none -> many links of this node
-        score = -surrounding_low_link_count + 2 * surrounding_none_owner_count + node_degree
+        score = -1 * surrounding_low_link_count + 3 * surrounding_none_owner_count + node_degree
+        
+        bridges = bridges_list()
+        continent_bridges = [bridge for bridge in bridges if G.nodes[bridge]['group'] == continent]
+        # Adjust the score based on the continent size (fewer nodes in continent means higher score)
+        score_adjustment = 1/(continent_size + 3*len(continent_bridges)) #more continent = bad, more bridges = bad
+        score *= score_adjustment
+        
         node_scores.append((node, score))
     
     sorted_nodes = sorted(node_scores, key=lambda x: x[1], reverse=True)
     return [node for node, score in sorted_nodes]
 
-def calculate_continent_groups(my_territories):
+def calculate_enemy_troops_by_continent():
+    enemy_troops_by_continent = {continent: 0 for continent in   continents}
+    territories_owned_by_others = {continent: 0 for continent in   continents}
+
+    for continent, nodes in   continents.items():
+        total_troops = 0
+        owned_by_others = 0
+        for node in nodes:
+            if   G.nodes[node].get('owner') != '0':
+                total_troops +=   G.nodes[node].get('troops', 0)
+                owned_by_others += 1
+        enemy_troops_by_continent[continent] = total_troops
+        territories_owned_by_others[continent] = owned_by_others
+
+    # Filter out continents with zero enemy troops
+    filtered_enemy_troops = {continent: troops for continent, troops in enemy_troops_by_continent.items() if troops > 0}
     
-    con = list(continents.keys())
+    # Adjust the troops count based on the number of territories owned by others
+    adjusted_enemy_troops = {continent: troops / territories_owned_by_others[continent] for continent, troops in filtered_enemy_troops.items() if territories_owned_by_others[continent] > 0}
+    
+    # Sort the continents based on the adjusted enemy troops in ascending order
+    sorted_continents = sorted(adjusted_enemy_troops.items(), key=lambda x: x[1])
+
+    return sorted_continents
+
+    return sorted_continents
+
+def calculate_continent_groups(territories_list):
+    con = list(  continents.keys())
     continent_groups = {}
 
     for continent in con:
-        continent_territories = set(continents[continent])
-        my_continent_territories = set(my_territories) & continent_territories
+        continent_territories = set(  continents[continent])
+        my_continent_territories = set(territories_list) & continent_territories
         portion = len(my_continent_territories) / len(continent_territories)
-        continent_groups[continent] = portion
-        sorted_continent_groups = sorted(continent_groups.items(), key=lambda x: x[1], reverse=True)
         
+        # # Calculate the total troops in my territories for this continent
+        # total_troops = sum(  G.nodes[node]['troops']/len(continent_territories) for node in my_continent_territories)
+        
+        # Combine portion and total troops into a single score, for example by adding them
+        score = portion #+ total_troops
+        
+        continent_groups[continent] = score
 
+    # Sort by the combined score in descending order
+    sorted_continent_groups = sorted(continent_groups.items(), key=lambda x: x[1], reverse=True)
+    
     return sorted_continent_groups
 
-def calculate_enemy_troops_by_continent():
-    enemy_troops_by_continent = {continent: 0 for continent in continents}
+def find_border_nodes(group):
+    border_nodes = []
+    for node in group:
+        for neighbor in G.neighbors(node):
+            if neighbor not in group:
+                border_nodes.append(node)
+                break
+    return border_nodes
 
-    for continent, nodes in continents.items():
-        total_troops = 0
-        for node in nodes:
-            if G.nodes[node].get('owner') != '0':
-                total_troops += G.nodes[node].get('troops', 0)
-        enemy_troops_by_continent[continent] = total_troops
-    
-    sort = sorted(enemy_troops_by_continent.items(), key=lambda x: x[1], reverse=False)
+def shortest_path_to_border(group, start_node):
+    if start_node not in group:
+        return None
 
-    return sort  
+    border_nodes = find_border_nodes(group)
+    shortest_path = None
 
-l = find_nexus_node()
-m = nexus_function(G)
-n =calculate_enemy_troops_by_continent()
+    for border_node in border_nodes:
+        path = nx.shortest_path(G, source=start_node, target=border_node)
+        if shortest_path is None or len(path) < len(shortest_path):
+            shortest_path = path
+
+    return shortest_path
+
+
+m = calculate_continent_groups(my_territories)
+n = nexus()
 print(n)
