@@ -58,25 +58,24 @@ for group, nodes in continents.items():
         G.nodes[node]['group'] = group
 
 # G.nodes[5]['owner'] = '0'
-# G.nodes[1]['owner'] = '0'
+# G.nodes[1]['owner'] = '4'
 # G.nodes[6]['owner'] = '0'
-# G.nodes[2]['owner'] = '0'
-G.nodes[30]['owner'] = '0'
-G.nodes[31]['owner'] = '0'
-G.nodes[29]['owner'] = '0'
-G.nodes[26]['owner'] = '0'
-G.nodes[35]['owner'] = '0'
-G.nodes[24]['owner'] = '0'
-G.nodes[38]['owner'] = '0'
-G.nodes[40]['owner'] = '0'
-G.nodes[41]['owner'] = '0'
-G.nodes[39]['owner'] = '0'
+# G.nodes[10]['owner'] = '0'
+# G.nodes[30]['owner'] = '0'
+# G.nodes[15]['owner'] = '0'
+# G.nodes[29]['owner'] = '0'
+# G.nodes[26]['owner'] = '1'
+# G.nodes[34]['owner'] = '0'
+# G.nodes[24]['owner'] = '2'
+# G.nodes[38]['owner'] = '3'
+# G.nodes[40]['owner'] = '2'
+# G.nodes[41]['owner'] = '3'
+# G.nodes[39]['owner'] = '3'
 
-for i in range(1, 40):
+for i in range(42):
     G.nodes[i]['troops'] = 10
 
-
-
+my_territories = [node for node in G.nodes if G.nodes[node]['owner'] == '0']
 
 # def find_most_clustered_nodes():
 #     clustered_nodes = [node for node in G.nodes() if len(list(G.neighbors(node))) >= 4]
@@ -85,7 +84,7 @@ for i in range(1, 40):
 
 # k = find_most_clustered_nodes()
 # print(k)
-my_territories = [node for node in G.nodes if G.nodes[node]['owner'] == '0']
+# my_territories = [node for node in G.nodes if G.nodes[node]['owner'] == '0']
 
 def bridges_list():
     # Find nodes connected to another continent
@@ -98,6 +97,225 @@ def bridges_list():
     connected_to_another_continent = list(set(connected_to_another_continent))
     return connected_to_another_continent
 
+# def nexus():
+#     nodes_with_none_owner = [n for n, attr in G.nodes(data=True) if attr.get('owner') is None]
+    
+#     # Calculate the number of nodes in each continent
+#     continent_node_counts = {continent: len(nodes) for continent, nodes in continents.items()}
+    
+#     node_scores = []
+    
+#     for node in nodes_with_none_owner:
+#         node_degree = G.degree(node) # type: ignore
+#         continent = G.nodes[node].get('group')
+#         continent_size = continent_node_counts[continent]
+
+#         surrounding_none_owner_count = 0
+#         surrounding_low_link_count = 0
+        
+#         for neighbor in G.neighbors(node):
+#             neighbor_degree = G.degree[neighbor] # type: ignore
+#             if G.nodes[neighbor].get('owner') is None:
+#                 surrounding_none_owner_count += 1
+#             surrounding_low_link_count += neighbor_degree
+        
+#         # Score calculation: prioritize few links of surrounding nodes -> most owner = none -> many links of this node
+#         score = -1 * surrounding_low_link_count + 2 * surrounding_none_owner_count + node_degree
+        
+#         bridges = [bridge for bridge in bridges_list() if G.nodes[bridge]['group'] == continent]
+#         # Adjust the score based on the continent size (fewer nodes in continent means higher score)
+#         score_adjustment = 1/(len(bridges)) #more continent = bad, more bridges = bad
+#         score *= score_adjustment
+        
+#         node_scores.append((node, score))
+    
+#     sorted_nodes = sorted(node_scores, key=lambda x: x[1], reverse=True)
+#     return [node for node, score in sorted_nodes]
+
+# def calculate_enemy_troops_by_continent():
+#     enemy_troops_by_continent = {continent: 0 for continent in   continents}
+#     territories_owned_by_others = {continent: 0 for continent in   continents}
+
+#     for continent, nodes in   continents.items():
+#         total_troops = 0
+#         owned_by_others = 0
+#         for node in nodes:
+#             if   G.nodes[node].get('owner') != '0':
+#                 total_troops +=   G.nodes[node].get('troops', 0)
+#                 owned_by_others += 1
+#         enemy_troops_by_continent[continent] = total_troops
+#         territories_owned_by_others[continent] = owned_by_others
+
+#     # Filter out continents with zero enemy troops
+#     filtered_enemy_troops = {continent: troops for continent, troops in enemy_troops_by_continent.items() if troops > 0}
+    
+#     # Adjust the troops count based on the number of territories owned by others
+#     adjusted_enemy_troops = {continent: troops / territories_owned_by_others[continent] for continent, troops in filtered_enemy_troops.items() if territories_owned_by_others[continent] > 0}
+    
+#     # Sort the continents based on the adjusted enemy troops in ascending order
+#     sorted_continents = sorted(adjusted_enemy_troops.items(), key=lambda x: x[1])
+
+#     return sorted_continents
+
+#     return sorted_continents
+
+# def calculate_continent_groups(territories_list):
+#     con = list(  continents.keys())
+#     continent_groups = {}
+
+#     for continent in con:
+#         continent_territories = set(  continents[continent])
+#         my_continent_territories = set(territories_list) & continent_territories
+#         portion = len(my_continent_territories) / len(continent_territories)
+        
+#         # # Calculate the total troops in my territories for this continent
+#         # total_troops = sum(  G.nodes[node]['troops']/len(continent_territories) for node in my_continent_territories)
+        
+#         # Combine portion and total troops into a single score, for example by adding them
+#         score = portion #+ total_troops
+        
+#         continent_groups[continent] = score
+
+#     # Sort by the combined score in descending order
+#     sorted_continent_groups = sorted(continent_groups.items(), key=lambda x: x[1], reverse=True)
+    
+#     return sorted_continent_groups
+
+# def find_border_nodes(group):
+#     border_nodes = []
+#     for node in group:
+#         for neighbor in G.neighbors(node):
+#             if neighbor not in group:
+#                 border_nodes.append(node)
+#                 break
+#     return border_nodes
+
+from heapq import heappop, heappush
+def get_node_troops(node_id):
+    return G.nodes[node_id].get('troops')
+
+def get_neighbors(node_id):
+    return G.neighbors(node_id)
+
+# def find_shortest_paths_to_continents(border_nodes):
+#     # Initialize the result list
+#     result = []
+
+#     # Priority queue for Dijkstra's algorithm
+#     pq = []
+    
+#     # Dictionary to keep track of the shortest path to each continent
+#     shortest_paths = {continent: float('inf') for continent in continents}
+#     starting_nodes = {continent: None for continent in continents}
+
+#     # Initialize the priority queue with the border nodes
+#     for node in border_nodes:
+#         heappush(pq, (G.nodes[node]['troops'], node, node))  # (troops, current_node, starting_node)
+
+#     # Dijkstra's algorithm
+#     while pq:
+#         current_troops, current_node, start_node = heappop(pq)
+#         current_continent = G.nodes[current_node].get('continent')
+
+#         # If the current node is in a different continent
+#         if current_continent in continents and current_troops < shortest_paths[current_continent]:
+#             shortest_paths[current_continent] = current_troops
+#             starting_nodes[current_continent] = start_node
+#             result.append((current_continent, current_troops, start_node))
+
+#         # Explore neighbors
+#         for neighbor in G.neighbors(current_node):
+#             neighbor_troops = G.nodes[neighbor]['troops']
+#             total_troops = current_troops + neighbor_troops
+#             heapq.heappush(pq, (total_troops, neighbor, start_node))
+
+#     return sorted(result, key=lambda x: x[1])  # Sort by the number of troops
+
+import heapq
+def shortest_troops_path_to_continent(border_nodes, target_continent):
+    min_heap = []
+    visited = set()
+    target_nodes = set(continents[target_continent])
+    shortest_paths = {}
+
+    for start_node in border_nodes:
+        heapq.heappush(min_heap, (G.nodes[start_node]['troops'], start_node, [start_node]))
+
+    while min_heap:
+        current_troops, current_node, path = heapq.heappop(min_heap)
+
+        if current_node in visited:
+            continue
+
+        visited.add(current_node)
+
+        if current_node in target_nodes:
+            if current_node not in shortest_paths or current_troops < shortest_paths[current_node][0]:
+                shortest_paths[current_node] = (current_troops, path)
+            continue
+
+        for neighbor in G.neighbors(current_node):
+            if neighbor not in visited:
+                total_troops = current_troops + G.nodes[neighbor]['troops']
+                heapq.heappush(min_heap, (total_troops, neighbor, path + [neighbor]))
+
+    if not shortest_paths:
+        return []
+
+    min_troops = min(shortest_paths.values(), key=lambda x: x[0])[0]
+    starting_nodes = [path[0] for troops, path in shortest_paths.values() if troops == min_troops]
+
+    return starting_nodes
+
+
+# def find_shortest_paths(border_nodes):
+#         # Initialize distances and priority queue
+#         distances = {node: float('inf') for node in G.nodes}
+#         for node in border_nodes:
+#             distances[node] = 0
+
+#         pq = [(0, node) for node in border_nodes]
+#         heapq.heapify(pq)
+
+#         while pq:
+#             current_distance, current_node = heapq.heappop(pq)
+
+#             if current_distance > distances[current_node]:
+#                 continue
+
+#             for neighbor in get_neighbors(current_node):
+#                 weight = get_node_troops(neighbor)
+#                 distance = current_distance + weight
+
+#                 if distance < distances[neighbor]:
+#                     distances[neighbor] = distance
+#                     heapq.heappush(pq, (distance, neighbor))
+
+#         # Map continents to the shortest distance found
+#         continent_distances = {continent: float('inf') for continent in continents}
+#         for continent, nodes in continents.items():
+#             for node in nodes:
+#                 if distances[node] < continent_distances[continent]:
+#                     continent_distances[continent] = distances[node]
+
+#         return continent_distances
+
+# def nodes_with_same_owner(owner):
+#         return [node for node in G.nodes if G.nodes[node]['owner'] == owner]
+
+# def check_strongest():
+#     strongest = []
+#     for i in range(5):
+#         print(i)
+#         troops = 0
+#         player_nodes = [node for node in G.nodes if G.nodes[node]['owner'] == str(i)]
+#         print(player_nodes)
+#         for node in player_nodes:
+#             troops += G.nodes[node]['troops']
+#         force = troops * len(player_nodes)
+#         strongest.append((i,force))
+#     sorted_strongest = sorted(strongest, key=lambda x: x[1], reverse=True)
+#     return sorted_strongest #list of tuple (playerid(int, not 'me'), force)
 def nexus():
     nodes_with_none_owner = [n for n, attr in G.nodes(data=True) if attr.get('owner') is None]
     
@@ -119,94 +337,40 @@ def nexus():
             if G.nodes[neighbor].get('owner') is None:
                 surrounding_none_owner_count += 1
             surrounding_low_link_count += neighbor_degree
-        
+        bridges = [bridge for bridge in bridges_list() if G.nodes[bridge]['group'] == continent]
         # Score calculation: prioritize few links of surrounding nodes -> most owner = none -> many links of this node
-        score = -1 * surrounding_low_link_count + 3 * surrounding_none_owner_count + node_degree
+        score = -2 * surrounding_low_link_count + 4 * surrounding_none_owner_count + 2*node_degree - len(bridges) - continent_size/2
         
-        bridges = bridges_list()
-        continent_bridges = [bridge for bridge in bridges if G.nodes[bridge]['group'] == continent]
-        # Adjust the score based on the continent size (fewer nodes in continent means higher score)
-        score_adjustment = 1/(continent_size + 3*len(continent_bridges)) #more continent = bad, more bridges = bad
-        score *= score_adjustment
+        # bridges = [bridge for bridge in bridges_list() if G.nodes[bridge]['group'] == continent]
+        # # Adjust the score based on the number of bridges required to defend(fewer nodes in continent means higher score)
+        # score_adjustment = 1/(continent_size) #more continent = bad, more bridges = bad
+        # score *= score_adjustment
         
         node_scores.append((node, score))
     
     sorted_nodes = sorted(node_scores, key=lambda x: x[1], reverse=True)
     return [node for node, score in sorted_nodes]
 
-def calculate_enemy_troops_by_continent():
-    enemy_troops_by_continent = {continent: 0 for continent in   continents}
-    territories_owned_by_others = {continent: 0 for continent in   continents}
-
-    for continent, nodes in   continents.items():
-        total_troops = 0
-        owned_by_others = 0
-        for node in nodes:
-            if   G.nodes[node].get('owner') != '0':
-                total_troops +=   G.nodes[node].get('troops', 0)
-                owned_by_others += 1
-        enemy_troops_by_continent[continent] = total_troops
-        territories_owned_by_others[continent] = owned_by_others
-
-    # Filter out continents with zero enemy troops
-    filtered_enemy_troops = {continent: troops for continent, troops in enemy_troops_by_continent.items() if troops > 0}
-    
-    # Adjust the troops count based on the number of territories owned by others
-    adjusted_enemy_troops = {continent: troops / territories_owned_by_others[continent] for continent, troops in filtered_enemy_troops.items() if territories_owned_by_others[continent] > 0}
-    
-    # Sort the continents based on the adjusted enemy troops in ascending order
-    sorted_continents = sorted(adjusted_enemy_troops.items(), key=lambda x: x[1])
-
-    return sorted_continents
-
-    return sorted_continents
-
-def calculate_continent_groups(territories_list):
-    con = list(  continents.keys())
+# for i in G.nodes:
+#      if G.nodes[i]['owner'] = '0'
+# n = check_strongest()
+# for i,d in check_strongest():
+#      print(i)
+# print(n)
+def calculate_continent_portion_owned(territories_list):
+    con = list(continents.keys())
     continent_groups = {}
 
     for continent in con:
-        continent_territories = set(  continents[continent])
+        continent_territories = set(continents[continent])
         my_continent_territories = set(territories_list) & continent_territories
         portion = len(my_continent_territories) / len(continent_territories)
-        
-        # # Calculate the total troops in my territories for this continent
-        # total_troops = sum(  G.nodes[node]['troops']/len(continent_territories) for node in my_continent_territories)
-        
-        # Combine portion and total troops into a single score, for example by adding them
-        score = portion #+ total_troops
-        
-        continent_groups[continent] = score
+        continent_groups[continent] = portion
 
-    # Sort by the combined score in descending order
     sorted_continent_groups = sorted(continent_groups.items(), key=lambda x: x[1], reverse=True)
     
     return sorted_continent_groups
 
-def find_border_nodes(group):
-    border_nodes = []
-    for node in group:
-        for neighbor in G.neighbors(node):
-            if neighbor not in group:
-                border_nodes.append(node)
-                break
-    return border_nodes
-
-def shortest_path_to_border(group, start_node):
-    if start_node not in group:
-        return None
-
-    border_nodes = find_border_nodes(group)
-    shortest_path = None
-
-    for border_node in border_nodes:
-        path = nx.shortest_path(G, source=start_node, target=border_node)
-        if shortest_path is None or len(path) < len(shortest_path):
-            shortest_path = path
-
-    return shortest_path
-
-
-m = calculate_continent_groups(my_territories)
-n = nexus()
-print(n)
+k = calculate_continent_portion_owned(my_territories)
+l = nexus()
+print(k)

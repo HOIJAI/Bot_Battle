@@ -37,7 +37,7 @@ def handle_fortify(game: Game, bot_state: BotState, query: QueryFortify, mapNetw
     #else pass
 
     all_borders = game.state.get_all_border_territories(my_territories)
-    centre = list(set(my_territories) - set(all_borders))
+    centre = mapNetwork.get_centre()
     behind_borders =  game.state.get_all_border_territories(centre)
     max_troops_behind = 0
     troops_behind_node = None

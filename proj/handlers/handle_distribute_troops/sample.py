@@ -56,6 +56,8 @@ def handle_distribute_troops(game: Game, bot_state: BotState, query: QueryDistri
     enemies_around_base = list(set(game.state.get_all_adjacent_territories(border_to_base))-set(my_territories))
     
     weakest_continents = mapNetwork.calculate_enemy_troops_by_continent() #list of tuples [('NA',0)]
+    
+    path_to_weakest = mapNetwork.find_shortest_paths_to_continents(all_borders)
 
     remaining_troops = total_troops
     # check if any enemy border territories have *2 troops than mine, if yes, place troops until my territories = enemies if possible
@@ -72,13 +74,14 @@ def handle_distribute_troops(game: Game, bot_state: BotState, query: QueryDistri
     if avg <=30 or game_state < 300 and domination <=3:
         if my_base_percent!=1: #continent not conquered
             for i in enemies_around_base:
-                enemy_troops = mapNetwork.get_node_troops(i)
-                adj_nodes = mapNetwork.get_neighbors(i)
-                for node, troops in stationed_troops:
-                    if node in adj_nodes and troops*2 <= enemy_troops and total_troops > (enemy_troops-troops):
-                        distributions[node] += (enemy_troops-troops)
-                        remaining_troops -= (enemy_troops-troops)
-                    break
+                if mapNetwork.G.nodes[i]['group'] == my_base_continent:
+                    enemy_troops = mapNetwork.get_node_troops(i)
+                    adj_nodes = mapNetwork.get_neighbors(i)
+                    for node, troops in stationed_troops:
+                        if node in adj_nodes and total_troops > (enemy_troops-troops):
+                            distributions[node] += (enemy_troops-troops)
+                            remaining_troops -= (enemy_troops-troops)
+                        break
                 break
 
         for i in weakest_continents: #if people in there
@@ -93,16 +96,17 @@ def handle_distribute_troops(game: Game, bot_state: BotState, query: QueryDistri
             break
 
     # mid game
-    elif avg <=60 or game_state < 550 and domination <=4:
+    elif avg <=60 or game_state <800 and domination <=5:
         if my_base_percent!=1: #continent not conquered
             for i in enemies_around_base:
-                enemy_troops = mapNetwork.get_node_troops(i)
-                adj_nodes = mapNetwork.get_neighbors(i)
-                for node, troops in stationed_troops:
-                    if node in adj_nodes and troops*2 <= enemy_troops and total_troops > (enemy_troops-troops):
-                        distributions[node] += (enemy_troops-troops)
-                        remaining_troops -= (enemy_troops-troops)
-                    break
+                if mapNetwork.G.nodes[i]['group'] == my_base_continent:
+                    enemy_troops = mapNetwork.get_node_troops(i)
+                    adj_nodes = mapNetwork.get_neighbors(i)
+                    for node, troops in stationed_troops:
+                        if node in adj_nodes and total_troops > (enemy_troops-troops):
+                            distributions[node] += (enemy_troops-troops)
+                            remaining_troops -= (enemy_troops-troops)
+                        break
                 break
         
         for i in weakest_continents:

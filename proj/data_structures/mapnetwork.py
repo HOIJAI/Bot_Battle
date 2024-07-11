@@ -1,4 +1,5 @@
 import networkx as nx
+import heapq
 
 class MapNetwork:
     def __init__(self):
@@ -80,6 +81,69 @@ class MapNetwork:
         connected_to_another_continent = list(set(connected_to_another_continent))
         return connected_to_another_continent
     
+    #dijkstra algorithm to find minimum path between my node to continents
+    def find_shortest_paths_to_continents(self, border_nodes):
+        # Initialize distances and priority queue
+        distances = {node: float('inf') for node in self.G.nodes}
+        for node in border_nodes:
+            distances[node] = 0
+
+        pq = [(0, node) for node in border_nodes]
+        heapq.heapify(pq)
+
+        while pq:
+            current_distance, current_node = heapq.heappop(pq)
+
+            if current_distance > distances[current_node]:
+                continue
+
+            for neighbor in self.get_neighbors(current_node):
+                weight = self.get_node_troops(neighbor)
+                distance = current_distance + weight
+
+                if distance < distances[neighbor]:
+                    distances[neighbor] = distance
+                    heapq.heappush(pq, (distance, neighbor))
+
+        # Map continents to the shortest distance found
+        continent_distances = {continent: float('inf') for continent in self.continents}
+        for continent, nodes in self.continents.items():
+            for node in nodes:
+                if distances[node] < continent_distances[continent]:
+                    continent_distances[continent] = distances[node]
+
+        return continent_distances
+    
+    def border_node_to_continent(self, border_nodes, target_continent):
+        target_nodes = set(self.continents[target_continent])
+        visited = set()
+        pq = []
+
+        # Initialize the priority queue with border nodes
+        for node in border_nodes:
+            heapq.heappush(pq, (self.G.nodes[node]['troops'], node, node))
+
+        shortest_path = {}
+
+        while pq:
+            current_troops, current_node, start_node = heapq.heappop(pq)
+
+            if current_node in visited:
+                continue
+
+            visited.add(current_node)
+
+            if current_node in target_nodes:
+                if target_continent not in shortest_path or current_troops < shortest_path[target_continent][0]:
+                    shortest_path[target_continent] = (current_troops, start_node)
+
+            for neighbor in self.G.neighbors(current_node):
+                if neighbor not in visited:
+                    heapq.heappush(pq, (current_troops + self.G.nodes[neighbor]['troops'], neighbor, start_node))
+
+        return [(continent, info[1]) for continent, info in shortest_path.items()]
+
+
     def nexus(self):
         nodes_with_none_owner = [n for n, attr in self.G.nodes(data=True) if attr.get('owner') is None]
         
@@ -102,12 +166,9 @@ class MapNetwork:
                     surrounding_none_owner_count += 1
                 surrounding_low_link_count += neighbor_degree
             
+            bridges = [bridge for bridge in self.bridges_list() if self.G.nodes[bridge]['group'] == continent]
             # Score calculation: prioritize few links of surrounding nodes -> most owner = none -> many links of this node
-            score = -1 * surrounding_low_link_count + 2 * surrounding_none_owner_count + node_degree
-            
-            # Adjust the score based on the continent size (fewer nodes in continent means higher score)
-            score_adjustment = 1 / continent_size
-            score *= score_adjustment
+            score = -1 * surrounding_low_link_count + 3 * surrounding_none_owner_count + 2*node_degree - len(bridges) - continent_size/2
             
             node_scores.append((node, score))
         
@@ -139,6 +200,24 @@ class MapNetwork:
                     break 
         return results
     
+    def check_strongest(self):
+        strongest = []
+        continents_owner = self.check_ownership()
+        for i in range(5):
+            continents_owned = 0
+            for con, k in continents_owner:
+                if k == str(i):
+                    continents_owned += 1
+            troops = 0
+            player_nodes = self.nodes_with_same_owner(str(i))
+            for node in player_nodes:
+                troops += self.get_node_troops(node)
+            force = troops * len(player_nodes) * continents_owned
+            strongest.append((i,force))
+        sorted_strongest = sorted(strongest, key=lambda x: x[1], reverse=True)
+        return sorted_strongest #list of tuple (playerid(not 'me'), force)
+            
+    
     def check_my_ownership(self):
         results = []
         for continent, nodes in self.continents.items():
@@ -167,7 +246,6 @@ class MapNetwork:
         sorted_continent_groups = sorted(continent_groups.items(), key=lambda x: x[1], reverse=True)
         
         return sorted_continent_groups #return list of tuples
-
     
     #return all the centre nodes that are surrounded by me
     def get_centre (self): #recursion to find the centre
@@ -180,32 +258,6 @@ class MapNetwork:
                 centre_nodes.append(node)
         return centre_nodes
 
-    #when poking a continent, look for the minimum land I can take without spending much troops
-    def find_min_troop_adjacent_node(self, continent, owner): #find the most number of my troops in the adjacent
-        min_enemies_troops = float('inf')
-        enemy_node = None
-        my_node = None
-        
-        # Get the list of nodes in the continent
-        continent_nodes = self.continents[continent]
-        
-        # Identify nodes in the continent owned by 'me'
-        nodes_owned_by_me = self.nodes_with_same_owner('me')
-        
-        for node in nodes_owned_by_me:
-            adj = self.G.neighbors(node)
-            for i in adj:
-                if self.get_node_owner(i) == owner and i in continent_nodes:
-                    if self.get_node_troops(i)<min_enemies_troops:
-                        min_enemies_troops = self.get_node_troops(i)
-                        enemy_node = i
-                        my_node = node
-                    
-        if my_node != None and enemy_node != None:
-            return [my_node, enemy_node]
-        else:
-            return None #need to check if my_node == None
-        
     def calculate_enemy_troops_by_continent(self):
         enemy_troops_by_continent = {continent: 0 for continent in self.continents}
         territories_owned_by_others = {continent: 0 for continent in self.continents}
@@ -223,14 +275,11 @@ class MapNetwork:
         # Filter out continents with zero enemy troops
         filtered_enemy_troops = {continent: troops for continent, troops in enemy_troops_by_continent.items() if troops > 0}
         
-        # Adjust the troops count based on the number of territories owned by others
-        adjusted_enemy_troops = {continent: troops / territories_owned_by_others[continent] for continent, troops in filtered_enemy_troops.items() if territories_owned_by_others[continent] > 0}
-        
         # Sort the continents based on the adjusted enemy troops in ascending order
-        sorted_continents = sorted(adjusted_enemy_troops.items(), key=lambda x: x[1])
+        sorted_continents = sorted(filtered_enemy_troops.items(), key=lambda x: x[1])
 
         return sorted_continents
-    
+
     def find_border_nodes(self, group):
         border_nodes = []
         for node in group:

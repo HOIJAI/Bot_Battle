@@ -48,17 +48,23 @@ def handle_troops_after_attack(game: Game, bot_state: BotState, query: QueryTroo
     # Find the adjacent enemy territory with the most troops
     most_troops = 1
     for i in adj:
-        if mapNetwork.get_node_troops(i) > most_troops:
+        if mapNetwork.get_node_troops(i) > most_troops and mapNetwork.get_node_owner(i)!='me':
             most_troops = mapNetwork.get_node_troops(i)
 
     troops_available = game.state.territories[move_attack.attacking_territory].troops
 
+    centre = mapNetwork.get_centre()
     # Determine the number of troops to move based on the available troops and adjacent enemy troops
-    if most_troops >= troops_available-3:
+    if attacked in centre: #if the one i attacked is surrounded by me just leave it
+        num_of_troops = 3
+    elif most_troops >= troops_available-3:
         if most_troops*2 > troops_available-1:
             num_of_troops = 3  # only move 3 troops ahead
         else:
-            num_of_troops = troops_available-1
+            if most_troops == 1:
+                num_of_troops = troops_available-2
+            else:
+                num_of_troops = troops_available-1
     else:
         num_of_troops = troops_available - most_troops
 
