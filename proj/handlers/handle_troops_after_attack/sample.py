@@ -12,26 +12,8 @@ from data_structures.mapnetwork import MapNetwork
 def handle_troops_after_attack(game: Game, bot_state: BotState, query: QueryTroopsAfterAttack, mapNetwork: MapNetwork) -> MoveTroopsAfterAttack:
     """After conquering a territory in an attack, you must move troops to the new territory."""
 
-    player_list = list(range(5))
-    other_players = list(set(player_list) - {game.state.me.player_id})
-
-    my_territories = game.state.get_territories_owned_by(game.state.me.player_id)
-    my_territories_model = [game.state.territories[x] for x in my_territories]
-    #get all the information into the map
-    for i in my_territories:
-        mapNetwork.set_node_owner(i,'me')
-    for i in my_territories_model:
-        mapNetwork.set_node_troops(i.territory_id, i.troops)
-
-    for i in other_players:
-        enemy_territories = game.state.get_territories_owned_by (i)
-        enemy_territories_model = [game.state.territories[x] for x in enemy_territories]
-        for j in enemy_territories:
-            mapNetwork.set_node_owner(j, str(i))
-        for j in enemy_territories_model:
-            mapNetwork.set_node_troops(j.territory_id, j.troops)
-
-
+    mapNetwork.update_mapnetwork(game)
+    my_territories = mapNetwork.nodes_with_same_owner(game.state.me.player_id)
 
     # First we need to get the record that describes the attack, and then the move that specifies
     # which territory was the attacking territory.

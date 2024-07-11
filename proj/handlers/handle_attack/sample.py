@@ -12,27 +12,8 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack, mapNetwor
     stop attacking (by passing). After a successful attack, you may move troops into the conquered
     territory. If you eliminated a player you will get a move to redeem cards and then distribute troops."""
 
-    player_list = list(range(5))
-    other_players = list(set(player_list) - {game.state.me.player_id})
-
-    my_territories = game.state.get_territories_owned_by(game.state.me.player_id)
-    my_territories_model = [game.state.territories[x] for x in my_territories]
-    #get all the information into the map
-    for i in my_territories:
-        mapNetwork.set_node_owner(i,'me')
-    for i in my_territories_model:
-        mapNetwork.set_node_troops(i.territory_id, i.troops)
-
-    for i in other_players:
-        enemy_territories = game.state.get_territories_owned_by (i)
-        enemy_territories_model = [game.state.territories[x] for x in enemy_territories]
-        for j in enemy_territories:
-            mapNetwork.set_node_owner(j, str(i))
-        for j in enemy_territories_model:
-            mapNetwork.set_node_troops(j.territory_id, j.troops)
-
-
-
+    mapNetwork.update_mapnetwork(game)
+    my_territories = mapNetwork.nodes_with_same_owner(game.state.me.player_id)
 
     def attack_weakest(territories: list[int]) -> Optional[MoveAttack]:
         # We will attack the weakest territory from the list.

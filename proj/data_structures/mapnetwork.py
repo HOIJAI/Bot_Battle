@@ -1,5 +1,6 @@
 import networkx as nx
 import heapq
+from risk_helper.game import Game
 
 class MapNetwork:
     def __init__(self):
@@ -254,3 +255,12 @@ class MapNetwork:
                 shortest_path = path
 
         return shortest_path #return list from start_node
+    
+    def update_mapnetwork(self, game: Game):
+        player_list = list(range(5))
+        myId = game.state.me.player_id
+
+        for value in game.state.territories.values():
+            if value.occupier in player_list:
+                self.set_node_owner(value.territory_id, 'me' if value.occupier == myId else str(value.occupier))
+                self.set_node_troops(value.territory_id, value.troops)

@@ -13,24 +13,8 @@ def handle_fortify(game: Game, bot_state: BotState, query: QueryFortify, mapNetw
     """At the end of your turn, after you have finished attacking, you may move a number of troops between
     any two of your territories (they must be adjacent)."""
 
-    player_list = list(range(5))
-    other_players = list(set(player_list) - {game.state.me.player_id})
-
-    my_territories = game.state.get_territories_owned_by(game.state.me.player_id)
-    my_territories_model = [game.state.territories[x] for x in my_territories]
-    #get all the information into the map
-    for i in my_territories:
-        mapNetwork.set_node_owner(i,'me')
-    for i in my_territories_model:
-        mapNetwork.set_node_troops(i.territory_id, i.troops)
-
-    for i in other_players:
-        enemy_territories = game.state.get_territories_owned_by (i)
-        enemy_territories_model = [game.state.territories[x] for x in enemy_territories]
-        for j in enemy_territories:
-            mapNetwork.set_node_owner(j, str(i))
-        for j in enemy_territories_model:
-            mapNetwork.set_node_troops(j.territory_id, j.troops)
+    mapNetwork.update_mapnetwork(game)
+    my_territories = mapNetwork.nodes_with_same_owner(game.state.me.player_id)
 
     #if some troops stuck inside, move them up (from shallow to deep)
     #else check all the border nodes and see which one < enemy troops, and see if adjacent have troops, move until == enemy troops
