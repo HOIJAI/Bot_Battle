@@ -1,4 +1,5 @@
 import networkx as nx
+import heapq
 
 class MapNetwork:
     def __init__(self):

@@ -26,6 +26,7 @@ from risk_shared.records.record_attack import RecordAttack
 from risk_shared.records.types.move_type import MoveType
 import numpy as np
 import networkx as nx
+import heapq
 ## dev imports
 from data_structures.bot_state import BotState
 from data_structures.mapnetwork import MapNetwork

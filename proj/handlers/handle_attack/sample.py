@@ -40,7 +40,7 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack, mapNetwor
         for candidate_target in territories:
             candidate_attackers = sorted(list(set(game.state.map.get_adjacent_to(candidate_target)) & set(my_territories)), key=lambda x: game.state.territories[x].troops, reverse=True)
             for candidate_attacker in candidate_attackers:
-                if game.state.territories[candidate_attacker].troops >= 4 and game.state.territories[candidate_target].troops < game.state.territories[candidate_attacker].troops//2:
+                if game.state.territories[candidate_attacker].troops >= 4 and game.state.territories[candidate_target].troops <= game.state.territories[candidate_attacker].troops//2:
                     attacker_surrounding = (set(game.state.map.get_adjacent_to(candidate_attacker))-set(my_territories))
                     target_surrounding = (set(game.state.map.get_adjacent_to(candidate_target))-set(my_territories))
                     surrounding_enemies = list(attacker_surrounding.union(target_surrounding))

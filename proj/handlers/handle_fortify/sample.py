@@ -42,7 +42,7 @@ def handle_fortify(game: Game, bot_state: BotState, query: QueryFortify, mapNetw
     max_troops_behind = 0
     troops_behind_node = None
 
-    min_troops_ahead = 0
+    min_troops_ahead = 0 #place in most troops border
     troops_ahead_node = None
 
     for i in behind_borders:
