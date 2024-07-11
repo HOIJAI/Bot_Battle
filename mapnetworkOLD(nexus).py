@@ -1,5 +1,4 @@
 import networkx as nx
-import heapq
 
 class MapNetwork:
     def __init__(self):
@@ -82,38 +81,39 @@ class MapNetwork:
         return connected_to_another_continent
     
     def nexus(self):
-        nodes_with_none_owner = [n for n, attr in self.G.nodes(data=True) if attr.get('owner') is None]
-        
-        # Calculate the number of nodes in each continent
-        continent_node_counts = {continent: len(nodes) for continent, nodes in self.continents.items()}
-        
-        node_scores = []
-        
-        for node in nodes_with_none_owner:
-            node_degree = self.G.degree(node) # type: ignore
-            continent = self.G.nodes[node].get('group')
-            continent_size = continent_node_counts[continent]
+        # Step 1: Calculate degree for each node
+        node_degrees = {node: degree for node, degree in nx.degree(self.G)}
 
-            surrounding_none_owner_count = 0
-            surrounding_low_link_count = 0
-            
-            for neighbor in self.G.neighbors(node):
-                neighbor_degree = self.G.degree[neighbor] # type: ignore
-                if self.G.nodes[neighbor].get('owner') is None:
-                    surrounding_none_owner_count += 1
-                surrounding_low_link_count += neighbor_degree
-            
-            # Score calculation: prioritize few links of surrounding nodes -> most owner = none -> many links of this node
-            score = -1 * surrounding_low_link_count + 2 * surrounding_none_owner_count + node_degree
-            
-            # Adjust the score based on the continent size (fewer nodes in continent means higher score)
-            score_adjustment = 1 / continent_size
-            score *= score_adjustment
-            
-            node_scores.append((node, score))
+        # Step 2: Filter nodes where owner is None
+        nodes_with_owner_none = [node for node in self.G.nodes if self.G.nodes[node].get('owner') is None]
+
+        # Step 3: Sort nodes by degree in descending order
+        sorted_nodes = sorted(nodes_with_owner_none, key=lambda node: node_degrees[node], reverse=True)
+
+        # Step 4: Find nodes with the minimum links (border nodes)
+        if not nodes_with_owner_none:
+            return []  # Return empty list if there are no nodes with owner as None
         
-        sorted_nodes = sorted(node_scores, key=lambda x: x[1], reverse=True)
-        return [node for node, score in sorted_nodes]
+        min_degree = min(node_degrees[node] for node in nodes_with_owner_none)
+        border_nodes = [node for node in nodes_with_owner_none if node_degrees[node] == min_degree]
+
+        # Step 5: Find nexus nodes that are connected to border nodes
+        nexus_connected_to_border = []
+
+        for nexus_node in sorted_nodes:
+            connected_to_border = [node for node in self.G.neighbors(nexus_node) if node in border_nodes]
+            if connected_to_border:
+                nexus_connected_to_border.append((nexus_node, connected_to_border))
+
+        # Step 6: Verify that most connections between nexus and border nodes are owner=None
+        valid_nexus_nodes = []
+
+        for nexus, connected_border in nexus_connected_to_border:
+            count_owner_none = sum(1 for neighbor in connected_border if self.G.nodes[neighbor].get('owner') is None)
+            if count_owner_none / len(connected_border) >= 0.8:  # Adjust threshold as needed
+                valid_nexus_nodes.append(nexus)
+
+        return valid_nexus_nodes
 
     #get adjacent territories (list of adj)
     def get_neighbors(self, node):
@@ -149,26 +149,25 @@ class MapNetwork:
                 if owner == 'me':
                     owner_count['me'] += 1
 
-            if owner_count['me'] / len(nodes) >= 0.6:
+            if owner_count['me'] / len(nodes) >= 0.7:
                 results.append(continent)
         # Sort results based on the length of the continent (number of nodes)
         results.sort(key=lambda x: len(self.continents[x]), reverse=True)
         return results
     
-    def calculate_continent_portion_owned(self, territories_list):
-        con = list(self.continents.keys())
-        continent_groups = {}
+    #get the 5 nodes closest
+    def get_5cluster(self):
+        nodes_owned_by_me = self.nodes_with_same_owner('me')
+        #Calculate clustering coefficients for these nodes
+        clustering_coeffs = {}
+        for i in nodes_owned_by_me:
+            clustering_coeffs[i] = nx.clustering(self.G, nodes=i)
 
-        for continent in con:
-            continent_territories = set(self.continents[continent])
-            my_continent_territories = set(territories_list) & continent_territories
-            portion = len(my_continent_territories) / len(continent_territories)
-            continent_groups[continent] = portion
+        #Find the top 5 nodes with the highest clustering coefficients
+        sorted_nodes = sorted(clustering_coeffs.items(), key=lambda x: x[1], reverse=True)
+        top_5_nodes = [node for node, _ in sorted_nodes[:5]]
 
-        sorted_continent_groups = sorted(continent_groups.items(), key=lambda x: x[1], reverse=True)
-        
-        return sorted_continent_groups #return list of tuples
-
+        return top_5_nodes #list
     
     #return all the centre nodes that are surrounded by me
     def get_centre (self): #recursion to find the centre
@@ -206,51 +205,3 @@ class MapNetwork:
             return [my_node, enemy_node]
         else:
             return None #need to check if my_node == None
-        
-    def calculate_enemy_troops_by_continent(self):
-        enemy_troops_by_continent = {continent: 0 for continent in self.continents}
-        territories_owned_by_others = {continent: 0 for continent in self.continents}
-
-        for continent, nodes in self.continents.items():
-            total_troops = 0
-            owned_by_others = 0
-            for node in nodes:
-                if self.G.nodes[node].get('owner') != 'me':
-                    total_troops += self.G.nodes[node].get('troops', 0)
-                    owned_by_others += 1
-            enemy_troops_by_continent[continent] = total_troops
-            territories_owned_by_others[continent] = owned_by_others
-
-        # Filter out continents with zero enemy troops
-        filtered_enemy_troops = {continent: troops for continent, troops in enemy_troops_by_continent.items() if troops > 0}
-        
-        # Adjust the troops count based on the number of territories owned by others
-        adjusted_enemy_troops = {continent: troops / territories_owned_by_others[continent] for continent, troops in filtered_enemy_troops.items() if territories_owned_by_others[continent] > 0}
-        
-        # Sort the continents based on the adjusted enemy troops in ascending order
-        sorted_continents = sorted(adjusted_enemy_troops.items(), key=lambda x: x[1])
-
-        return sorted_continents
-    
-    def find_border_nodes(self, group):
-        border_nodes = []
-        for node in group:
-            for neighbor in self.G.neighbors(node):
-                if neighbor not in group:
-                    border_nodes.append(node)
-                    break
-        return border_nodes
-
-    def shortest_path_to_border(self, group, start_node):
-        if start_node not in group:
-            return None
-
-        border_nodes = self.find_border_nodes(group)
-        shortest_path = None
-
-        for border_node in border_nodes:
-            path = nx.shortest_path(self.G, source=start_node, target=border_node)
-            if shortest_path is None or len(path) < len(shortest_path):
-                shortest_path = path
-
-        return shortest_path #return list from start_node

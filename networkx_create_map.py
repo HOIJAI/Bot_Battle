@@ -1,11 +1,12 @@
 import networkx as nx
+from collections import defaultdict, deque
 # import matplotlib.pyplot as plt
 
 # Create an empty graph
 G = nx.Graph()
 
 # Add nodes from 0 to 41
-G.add_nodes_from(list(range(42)), num = 0, owner = None)
+G.add_nodes_from(list(range(42)), troops = 0, owner = None)
 
 # Add edges
 G.add_edges_from([(0,1),(0,5),(0,21)])
@@ -56,172 +57,156 @@ for group, nodes in continents.items():
     for node in nodes:
         G.nodes[node]['group'] = group
 
-# Find nodes connected to another continent
-connected_to_another_continent = []
+# G.nodes[5]['owner'] = '0'
+# G.nodes[1]['owner'] = '0'
+# G.nodes[6]['owner'] = '0'
+# G.nodes[2]['owner'] = '0'
+G.nodes[30]['owner'] = '0'
+G.nodes[31]['owner'] = '0'
+G.nodes[29]['owner'] = '0'
+G.nodes[26]['owner'] = '0'
+G.nodes[35]['owner'] = '0'
+G.nodes[24]['owner'] = '0'
+G.nodes[38]['owner'] = '0'
+G.nodes[40]['owner'] = '0'
+G.nodes[41]['owner'] = '0'
+G.nodes[39]['owner'] = '0'
 
-for u, v in G.edges():
-    if G.nodes[u]['group'] != G.nodes[v]['group']:
-        connected_to_another_continent.append(u)
-        connected_to_another_continent.append(v)
-
-connected_to_another_continent = list(set(connected_to_another_continent))
-for node in range(0, 15):
-    G.nodes[node]['owner'] = '0'
-
-G.nodes[30]['owner'] = 'me'
-G.nodes[29]['owner'] = 'me'
-
-max_troops = -1
-best_node = None
-
-# Get the list of nodes in the continent
-continent_nodes = continents['NA']
-
-# Identify nodes in the continent owned by 'me'
-nodes_owned_by_me = [node for node, data in G.nodes(data=True) if data.get('owner') == 'me']
-
-# Iterate through nodes owned by 'me'
-for node in nodes_owned_by_me:
-    # Check adjacent nodes
-    for neighbor in G.neighbors(node):
-        # Check if neighbor is in the continent and owned by the specified owner
-        if neighbor in continent_nodes and G.nodes[neighbor].get('owner') == '0':
-            # Get the number of troops
-            num_troops = G.nodes[neighbor].get('num', 0)
-            # Update the best node if this one has more troops
-            if num_troops > max_troops:
-                max_troops = num_troops
-                best_node = node
-                
-print(best_node)
-results = []
-for continent, nodes in continents.items():
-    owner_count = {}
-    for node in nodes:
-        owner = G.nodes[node].get('owner')
-        if owner and owner != 'me':
-            if owner not in owner_count:
-                owner_count[owner] = 0
-            owner_count[owner] += 1
-    for owner, count in owner_count.items():
-        if count / len(nodes) >= 0.75:
-            results.append((continent, owner))
-            break 
-print(results[0][0])
-# print(G.nodes[1].get('num'))
-
-# print("Nodes connected to another continent:", connected_to_another_continent)
+for i in range(1, 40):
+    G.nodes[i]['troops'] = 10
 
 
-# nodes_owned_by_me = [node for node in G.nodes if G.nodes[node].get('owner') == 'me']
-
-# # Check if there is a node surrounded by nodes also owned by 'me'
-# surrounded_nodes = []
-
-# for node in nodes_owned_by_me:
-#     neighbors = G.neighbors(node)
-#     if all(G.nodes[neighbor].get('owner') == 'me' for neighbor in neighbors):
-#         surrounded_nodes.append(node)
-
-# if surrounded_nodes:
-#     print("Nodes owned by 'me' that are surrounded by nodes also owned by 'me':", surrounded_nodes)
-# else:
-#     print("No nodes owned by 'me' are completely surrounded by nodes also owned by 'me'.")
-# nodes_owned_by_me = [node for node in G.nodes if G.nodes[node].get('owner') == 'me']
-
-# # Step 2: Calculate clustering coefficients for these nodes
-# clustering_coefficients = nx.clustering(G, nodes_owned_by_me)
-
-# # Step 3: Find the top 5 nodes with the highest clustering coefficients
-# top_5_nodes = sorted(clustering_coefficients, key=clustering_coefficients.get, reverse=True)[:5] # type: ignore
-
-# print("Top 5 nodes owned by 'me' with the highest clustering coefficients:", top_5_nodes)
-
-# # Calculate degree for each node
-# node_degrees = {node: degree for node, degree in nx.degree(G)}
-
-# # Filter nodes where owner is None
-# nodes_with_owner_none = [node for node in G.nodes if G.nodes[node]['owner'] is None]
-
-# # Find nodes with the least links (owner=None)
-# min_degree = min(node_degrees[node] for node in nodes_with_owner_none)
-# nodes_with_min_degree = [node for node in nodes_with_owner_none if node_degrees[node] == min_degree]
-
-# print("Nodes with the least links (owner=None):", nodes_with_min_degree)
-
-# # Find nodes (owner=None) next to those with the least links
-# neighbors_with_most_links = []
-
-# for node in nodes_with_min_degree:
-#     neighbors = list(G.neighbors(node))
-#     neighbors_degrees = [(neighbor, node_degrees[neighbor]) for neighbor in neighbors if G.nodes[neighbor]['owner'] is None]
-#     neighbors_sorted_by_degree = sorted(neighbors_degrees, key=lambda x: x[1], reverse=True)
-#     if neighbors_sorted_by_degree:
-#         neighbors_with_most_links.append(neighbors_sorted_by_degree[0][0])
 
 
-# # Calculate degree for each node
-# node_degrees = {node: degree for node, degree in nx.degree(G)}
+# def find_most_clustered_nodes():
+#     clustered_nodes = [node for node in G.nodes() if len(list(G.neighbors(node))) >= 4]
+#     clustered_nodes_sorted = sorted(clustered_nodes, key=lambda node: len(list(G.neighbors(node))), reverse=True)
+#     return clustered_nodes_sorted
 
-# # Filter nodes where owner is None
-# nodes_with_owner_none = [node for node in G.nodes if G.nodes[node]['owner'] is None]
+# k = find_most_clustered_nodes()
+# print(k)
+my_territories = [node for node in G.nodes if G.nodes[node]['owner'] == '0']
 
-# # Sort nodes by degree in descending order
-# nexus_nodes = sorted(nodes_with_owner_none, key=lambda node: node_degrees[node], reverse=True)
+def bridges_list():
+    # Find nodes connected to another continent
+    connected_to_another_continent = []
+    for u, v in G.edges():
+        if G.nodes[u]['group'] != G.nodes[v]['group']:
+            connected_to_another_continent.append(u)
+            connected_to_another_continent.append(v)
 
-# print("Nodes sorted by degree (owner=None):", nexus_nodes)
+    connected_to_another_continent = list(set(connected_to_another_continent))
+    return connected_to_another_continent
 
-# # Find nodes (border_nodes) with the minimum links (owner=None)
-# min_degree = min(node_degrees[node] for node in nodes_with_owner_none)
-# border_nodes = [node for node in nodes_with_owner_none if node_degrees[node] == min_degree]
+def nexus():
+    nodes_with_none_owner = [n for n, attr in G.nodes(data=True) if attr.get('owner') is None]
+    
+    # Calculate the number of nodes in each continent
+    continent_node_counts = {continent: len(nodes) for continent, nodes in continents.items()}
+    
+    node_scores = []
+    
+    for node in nodes_with_none_owner:
+        node_degree = G.degree(node) # type: ignore
+        continent = G.nodes[node].get('group')
+        continent_size = continent_node_counts[continent]
 
-# print("Border nodes (owner=None) with the minimum links:", border_nodes)
+        surrounding_none_owner_count = 0
+        surrounding_low_link_count = 0
+        
+        for neighbor in G.neighbors(node):
+            neighbor_degree = G.degree[neighbor] # type: ignore
+            if G.nodes[neighbor].get('owner') is None:
+                surrounding_none_owner_count += 1
+            surrounding_low_link_count += neighbor_degree
+        
+        # Score calculation: prioritize few links of surrounding nodes -> most owner = none -> many links of this node
+        score = -1 * surrounding_low_link_count + 3 * surrounding_none_owner_count + node_degree
+        
+        bridges = bridges_list()
+        continent_bridges = [bridge for bridge in bridges if G.nodes[bridge]['group'] == continent]
+        # Adjust the score based on the continent size (fewer nodes in continent means higher score)
+        score_adjustment = 1/(continent_size + 3*len(continent_bridges)) #more continent = bad, more bridges = bad
+        score *= score_adjustment
+        
+        node_scores.append((node, score))
+    
+    sorted_nodes = sorted(node_scores, key=lambda x: x[1], reverse=True)
+    return [node for node, score in sorted_nodes]
 
-# # Find nexus nodes that are connected to border nodes
-# nexus_connected_to_border = []
+def calculate_enemy_troops_by_continent():
+    enemy_troops_by_continent = {continent: 0 for continent in   continents}
+    territories_owned_by_others = {continent: 0 for continent in   continents}
 
-# for nexus_node in nexus_nodes:
-#     connected_to_border = [node for node in G.neighbors(nexus_node) if node in border_nodes]
-#     if connected_to_border:
-#         nexus_connected_to_border.append((nexus_node, connected_to_border))
+    for continent, nodes in   continents.items():
+        total_troops = 0
+        owned_by_others = 0
+        for node in nodes:
+            if   G.nodes[node].get('owner') != '0':
+                total_troops +=   G.nodes[node].get('troops', 0)
+                owned_by_others += 1
+        enemy_troops_by_continent[continent] = total_troops
+        territories_owned_by_others[continent] = owned_by_others
 
-# print("Nexus nodes connected to border nodes:", nexus_connected_to_border)
+    # Filter out continents with zero enemy troops
+    filtered_enemy_troops = {continent: troops for continent, troops in enemy_troops_by_continent.items() if troops > 0}
+    
+    # Adjust the troops count based on the number of territories owned by others
+    adjusted_enemy_troops = {continent: troops / territories_owned_by_others[continent] for continent, troops in filtered_enemy_troops.items() if territories_owned_by_others[continent] > 0}
+    
+    # Sort the continents based on the adjusted enemy troops in ascending order
+    sorted_continents = sorted(adjusted_enemy_troops.items(), key=lambda x: x[1])
 
-# # Verify that most connections between nexus and border nodes are owner=None
-# valid_nexus_nodes = []
+    return sorted_continents
 
-# for nexus, connected_border in nexus_connected_to_border:
-#     count_owner_none = sum(1 for neighbor in connected_border if G.nodes[neighbor]['owner'] is None)
-#     if count_owner_none / len(connected_border) >= 0.5:  # Adjust threshold as needed
-#         valid_nexus_nodes.append(nexus)
+    return sorted_continents
 
-# print("Valid nexus nodes with most links to owner=None border nodes:", valid_nexus_nodes)
-# useful functions
-# print(list(G.nodes)) #all the nodes in a list
-# print(list(G.edges)) #list of tuples of connections
+def calculate_continent_groups(territories_list):
+    con = list(  continents.keys())
+    continent_groups = {}
 
-# G.nodes[1]['num']=2
-# print(G.nodes[1]['num'])
-# print(G.nodes[1]['owner'])
-# print(G.nodes[1]['group'])
-# print(G.nodes.data())
+    for continent in con:
+        continent_territories = set(  continents[continent])
+        my_continent_territories = set(territories_list) & continent_territories
+        portion = len(my_continent_territories) / len(continent_territories)
+        
+        # # Calculate the total troops in my territories for this continent
+        # total_troops = sum(  G.nodes[node]['troops']/len(continent_territories) for node in my_continent_territories)
+        
+        # Combine portion and total troops into a single score, for example by adding them
+        score = portion #+ total_troops
+        
+        continent_groups[continent] = score
 
-# print(G.degree[1]) #same as len(list(G.adj[1]))
-# print(list(G.adj[1]))#get how many connections there are and its nodes
-# print(len(list(G[1]))) #same as adj[1]
- #get how many connections there are
-# pos = nx.spring_layout(G)
-# # Draw nodes
-# plt.figure(figsize=(12, 12))
-# nx.draw_networkx_nodes(G, pos, node_size=500, node_color="skyblue")
+    # Sort by the combined score in descending order
+    sorted_continent_groups = sorted(continent_groups.items(), key=lambda x: x[1], reverse=True)
+    
+    return sorted_continent_groups
 
-# # Draw edges
-# nx.draw_networkx_edges(G, pos, edge_color="gray")
+def find_border_nodes(group):
+    border_nodes = []
+    for node in group:
+        for neighbor in G.neighbors(node):
+            if neighbor not in group:
+                border_nodes.append(node)
+                break
+    return border_nodes
 
-# # Draw labels
-# nx.draw_networkx_labels(G, pos, font_size=10, font_weight="bold")
+def shortest_path_to_border(group, start_node):
+    if start_node not in group:
+        return None
 
-# # Display the plot
-# plt.title("NetworkX Graph with Spring Layout")
-# plt.axis("off")  # Turn off axis labels
-# plt.show()
+    border_nodes = find_border_nodes(group)
+    shortest_path = None
+
+    for border_node in border_nodes:
+        path = nx.shortest_path(G, source=start_node, target=border_node)
+        if shortest_path is None or len(path) < len(shortest_path):
+            shortest_path = path
+
+    return shortest_path
+
+
+m = calculate_continent_groups(my_territories)
+n = nexus()
+print(n)
