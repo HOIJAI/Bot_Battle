@@ -21,26 +21,24 @@ def handle_distribute_troops(game: Game, bot_state: BotState, query: QueryDistri
         distributions[game.state.me.must_place_territory_bonus[0]] += 2
         total_troops -= 2
 
-    # Set owner and troops for my territories
+    player_list = list(range(5))
+    other_players = list(set(player_list) - {game.state.me.player_id})
     my_territories = game.state.get_territories_owned_by(game.state.me.player_id)
     my_territories_model = [game.state.territories[x] for x in my_territories]
-    for territory_id in my_territories:
-        mapNetwork.set_node_owner(territory_id, 'me')
-    for territory in my_territories_model:
-        mapNetwork.set_node_troops(territory.territory_id, territory.troops)
+    #get all the information into the map
+    for i in my_territories:
+        mapNetwork.set_node_owner(i,'me')
+    for i in my_territories_model:
+        mapNetwork.set_node_troops(i.territory_id, i.troops)
 
-    # Set owner and troops for enemy territories
-    other_players = set(range(5)) - {game.state.me.player_id}
-    for player_id in other_players:
-        enemy_territories = game.state.get_territories_owned_by(player_id)
+    for i in other_players:
+        enemy_territories = game.state.get_territories_owned_by (i)
         enemy_territories_model = [game.state.territories[x] for x in enemy_territories]
-        for territory_id in enemy_territories:
-            mapNetwork.set_node_owner(territory_id, str(player_id))
-        for territory in enemy_territories_model:
-            mapNetwork.set_node_troops(territory.territory_id, territory.troops)
-
-
-
+        for j in enemy_territories:
+            mapNetwork.set_node_owner(j, str(i))
+        for j in enemy_territories_model:
+            mapNetwork.set_node_troops(j.territory_id, j.troops)
+    
     '''game_phases'''
     game_state = len(game.state.recording) #game starts at 133
     avg = mapNetwork.get_average_troops() #average troops per players

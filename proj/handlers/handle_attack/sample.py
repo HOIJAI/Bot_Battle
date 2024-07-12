@@ -32,8 +32,6 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack, mapNetwor
             mapNetwork.set_node_troops(j.territory_id, j.troops)
 
 
-
-
     def attack_weakest(territories: list[int]) -> Optional[MoveAttack]:
         # We will attack the weakest territory from the list.
         territories = sorted(territories, key=lambda x: game.state.territories[x].troops)
@@ -55,15 +53,13 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack, mapNetwor
     avg = mapNetwork.get_average_troops() #average troops per players
     domination = len(mapNetwork.check_my_ownership()) + len(mapNetwork.check_ownership()) #how many continents are near conquered already
 
-    my_base_continent = mapNetwork.calculate_continent_portion_owned(my_territories)[0][0] #string of the name
-    my_base_percent = mapNetwork.calculate_continent_portion_owned(my_territories)[0][1]
 
-    base_territories = list(set(my_territories)&set(mapNetwork.continents[my_base_continent]))
-    all_borders = game.state.get_all_border_territories(my_territories) #my territories in that base
-    border_to_base = game.state.get_all_border_territories(base_territories) #those are MINE
-    enemies_around_base = list(set(game.state.get_all_adjacent_territories(border_to_base))-set(my_territories))
+    # base_territories = list(set(my_territories)&set(mapNetwork.continents[my_base_continent]))
+    # all_borders = game.state.get_all_border_territories(my_territories) #my territories in that base
+    # border_to_base = game.state.get_all_border_territories(base_territories) #those are MINE
+    # enemies_around_base = list(set(game.state.get_all_adjacent_territories(border_to_base))-set(my_territories))
     
-    weakest_continents = mapNetwork.calculate_enemy_troops_by_continent() #list of tuples [('NA',0)]
+    # weakest_continents = mapNetwork.calculate_enemy_troops_by_continent() #list of tuples [('NA',0)]
 
 
     # early game

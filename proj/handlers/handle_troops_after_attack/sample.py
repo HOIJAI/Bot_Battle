@@ -31,8 +31,6 @@ def handle_troops_after_attack(game: Game, bot_state: BotState, query: QueryTroo
         for j in enemy_territories_model:
             mapNetwork.set_node_troops(j.territory_id, j.troops)
 
-
-
     # First we need to get the record that describes the attack, and then the move that specifies
     # which territory was the attacking territory.
     record_attack = cast(RecordAttack, game.state.recording[query.record_attack_id])

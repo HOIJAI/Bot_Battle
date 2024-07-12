@@ -1,5 +1,6 @@
 import networkx as nx
 import heapq
+from risk_helper.game import Game
 
 class MapNetwork:
     def __init__(self):
@@ -155,19 +156,19 @@ class MapNetwork:
         results.sort(key=lambda x: len(self.continents[x]), reverse=True)
         return results
     
-    def calculate_continent_portion_owned(self, territories_list):
-        con = list(self.continents.keys())
-        continent_groups = {}
+    # def calculate_continent_portion_owned(self, territories_list):
+    #     con = list(self.continents.keys())
+    #     continent_groups = {}
 
-        for continent in con:
-            continent_territories = set(self.continents[continent])
-            my_continent_territories = set(territories_list) & continent_territories
-            portion = len(my_continent_territories) / len(continent_territories)
-            continent_groups[continent] = portion
+    #     for continent in con:
+    #         continent_territories = set(self.continents[continent])
+    #         my_continent_territories = set(territories_list) & continent_territories
+    #         portion = len(my_continent_territories) / len(continent_territories)
+    #         continent_groups[continent] = portion
 
-        sorted_continent_groups = sorted(continent_groups.items(), key=lambda x: x[1], reverse=True)
+    #     sorted_continent_groups = sorted(continent_groups.items(), key=lambda x: x[1], reverse=True)
         
-        return sorted_continent_groups #return list of tuples
+    #     return sorted_continent_groups #return list of tuples
 
     
     #return all the centre nodes that are surrounded by me
@@ -181,56 +182,56 @@ class MapNetwork:
                 centre_nodes.append(node)
         return centre_nodes
 
-    #when poking a continent, look for the minimum land I can take without spending much troops
-    def find_min_troop_adjacent_node(self, continent, owner): #find the most number of my troops in the adjacent
-        min_enemies_troops = float('inf')
-        enemy_node = None
-        my_node = None
+    # #when poking a continent, look for the minimum land I can take without spending much troops
+    # def find_min_troop_adjacent_node(self, continent, owner): #find the most number of my troops in the adjacent
+    #     min_enemies_troops = float('inf')
+    #     enemy_node = None
+    #     my_node = None
         
-        # Get the list of nodes in the continent
-        continent_nodes = self.continents[continent]
+    #     # Get the list of nodes in the continent
+    #     continent_nodes = self.continents[continent]
         
-        # Identify nodes in the continent owned by 'me'
-        nodes_owned_by_me = self.nodes_with_same_owner('me')
+    #     # Identify nodes in the continent owned by 'me'
+    #     nodes_owned_by_me = self.nodes_with_same_owner('me')
         
-        for node in nodes_owned_by_me:
-            adj = self.G.neighbors(node)
-            for i in adj:
-                if self.get_node_owner(i) == owner and i in continent_nodes:
-                    if self.get_node_troops(i)<min_enemies_troops:
-                        min_enemies_troops = self.get_node_troops(i)
-                        enemy_node = i
-                        my_node = node
+    #     for node in nodes_owned_by_me:
+    #         adj = self.G.neighbors(node)
+    #         for i in adj:
+    #             if self.get_node_owner(i) == owner and i in continent_nodes:
+    #                 if self.get_node_troops(i)<min_enemies_troops:
+    #                     min_enemies_troops = self.get_node_troops(i)
+    #                     enemy_node = i
+    #                     my_node = node
                     
-        if my_node != None and enemy_node != None:
-            return [my_node, enemy_node]
-        else:
-            return None #need to check if my_node == None
+    #     if my_node != None and enemy_node != None:
+    #         return [my_node, enemy_node]
+    #     else:
+    #         return None #need to check if my_node == None
         
-    def calculate_enemy_troops_by_continent(self):
-        enemy_troops_by_continent = {continent: 0 for continent in self.continents}
-        territories_owned_by_others = {continent: 0 for continent in self.continents}
+    # def calculate_enemy_troops_by_continent(self):
+    #     enemy_troops_by_continent = {continent: 0 for continent in self.continents}
+    #     territories_owned_by_others = {continent: 0 for continent in self.continents}
 
-        for continent, nodes in self.continents.items():
-            total_troops = 0
-            owned_by_others = 0
-            for node in nodes:
-                if self.G.nodes[node].get('owner') != 'me':
-                    total_troops += self.G.nodes[node].get('troops', 0)
-                    owned_by_others += 1
-            enemy_troops_by_continent[continent] = total_troops
-            territories_owned_by_others[continent] = owned_by_others
+    #     for continent, nodes in self.continents.items():
+    #         total_troops = 0
+    #         owned_by_others = 0
+    #         for node in nodes:
+    #             if self.G.nodes[node].get('owner') != 'me':
+    #                 total_troops += self.G.nodes[node].get('troops', 0)
+    #                 owned_by_others += 1
+    #         enemy_troops_by_continent[continent] = total_troops
+    #         territories_owned_by_others[continent] = owned_by_others
 
-        # Filter out continents with zero enemy troops
-        filtered_enemy_troops = {continent: troops for continent, troops in enemy_troops_by_continent.items() if troops > 0}
+    #     # Filter out continents with zero enemy troops
+    #     filtered_enemy_troops = {continent: troops for continent, troops in enemy_troops_by_continent.items() if troops > 0}
         
-        # Adjust the troops count based on the number of territories owned by others
-        adjusted_enemy_troops = {continent: troops / territories_owned_by_others[continent] for continent, troops in filtered_enemy_troops.items() if territories_owned_by_others[continent] > 0}
+    #     # Adjust the troops count based on the number of territories owned by others
+    #     adjusted_enemy_troops = {continent: troops / territories_owned_by_others[continent] for continent, troops in filtered_enemy_troops.items() if territories_owned_by_others[continent] > 0}
         
-        # Sort the continents based on the adjusted enemy troops in ascending order
-        sorted_continents = sorted(adjusted_enemy_troops.items(), key=lambda x: x[1])
+    #     # Sort the continents based on the adjusted enemy troops in ascending order
+    #     sorted_continents = sorted(adjusted_enemy_troops.items(), key=lambda x: x[1])
 
-        return sorted_continents
+    #     return sorted_continents
     
     def find_border_nodes(self, group):
         border_nodes = []
@@ -305,3 +306,24 @@ class MapNetwork:
             
         return sorted(results, key=lambda x: (x[2], len(x[1])))  # Sort by the total troops required and path length
         # e.g[['NA', [0], 0], ['SA', [2, 30], 40], ['EU', [4, 10], 70],...
+
+
+    def update_mapnetwork(self, game: Game):
+        player_list = list(range(5))
+        other_players = list(set(player_list) - {game.state.me.player_id})
+
+        my_territories = game.state.get_territories_owned_by(game.state.me.player_id)
+        my_territories_model = [game.state.territories[x] for x in my_territories]
+        #get all the information into the map
+        for i in my_territories:
+            self.set_node_owner(i,'me')
+        for i in my_territories_model:
+            self.set_node_troops(i.territory_id, i.troops)
+
+        for i in other_players:
+            enemy_territories = game.state.get_territories_owned_by (i)
+            enemy_territories_model = [game.state.territories[x] for x in enemy_territories]
+            for j in enemy_territories:
+                self.set_node_owner(j, str(i))
+            for j in enemy_territories_model:
+                self.set_node_troops(j.territory_id, j.troops)
