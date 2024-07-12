@@ -53,12 +53,17 @@ def handle_fortify(game: Game, bot_state: BotState, query: QueryFortify, mapNetw
 
     if max_troops_behind > 3:
         next_to_max = list(set(mapNetwork.get_neighbors(troops_behind_node))&set(all_borders))
+        strongest_troops = 0
+        #move to strongest node
         for i in next_to_max:
-            adj_to_this_border_node = list(set(mapNetwork.get_neighbors(i))-set(my_territories))
-            for j in adj_to_this_border_node: #find the most troops that are near this border
-                if mapNetwork.get_node_troops(j) > min_troops_ahead: #this is max troops in front of border
-                    min_troops_ahead = mapNetwork.get_node_troops(j)
-                    troops_ahead_node = i
+            if mapNetwork.get_node_troops(i) > strongest_troops:
+                troops_ahead_node = i
+                strongest_troops = mapNetwork.get_node_troops(i)
+            # adj_to_this_border_node = list(set(mapNetwork.get_neighbors(i))-set(my_territories))
+            # for j in adj_to_this_border_node: #find the most troops that are near this border
+            #     if mapNetwork.get_node_troops(j) > min_troops_ahead: #this is max troops in front of border
+            #         min_troops_ahead = mapNetwork.get_node_troops(j)
+            #         troops_ahead_node = i
 
     else:
         for i in centre:

@@ -68,16 +68,15 @@ def handle_distribute_troops(game: Game, bot_state: BotState, query: QueryDistri
     # check if any enemy border territories have *2 troops than mine, if yes, place troops until my territories = enemies if possible
 
     for i in weakest_continent:
-        troops_needed = i[2] * 2 - mapNetwork.get_node_troops(i[1][0])
-        if i[2] !=0 and troops_needed > 0: 
-            if total_troops > troops_needed: #0 is when I own the entire continent
-            # troops_needed = i[2] * 2 - mapNetwork.get_node_troops(i[1][0])
-            # if total_troops >= troops_needed:
+        if i[2] !=0: #0 is when I own the entire continent
+            troops_needed = i[2] * 2 - mapNetwork.get_node_troops(i[1][0])
+            if total_troops >= troops_needed:
                 distributions[i[1][0]] += troops_needed
                 total_troops -= troops_needed
             else: # Distribute total troops if not enough for 2*i[2]
                 distributions[i[1][0]] += total_troops
                 total_troops = 0
+        break
             
     
     if total_troops !=0:

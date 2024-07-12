@@ -254,3 +254,54 @@ class MapNetwork:
                 shortest_path = path
 
         return shortest_path #return list from start_node
+    
+    def find_optimal_paths_to_continents(self, my_nodes):
+        def dijkstra_with_troops(start: int, target_continent):
+            pq = [(0, 0, start, [start])]  # Priority queue with (total troops, total nodes, current node, path)
+            visited = set()
+            
+            while pq:
+                total_troops, total_nodes, current, path = heapq.heappop(pq)
+                
+                if current in visited:
+                    continue
+                visited.add(current)
+                
+                if current in target_continent:
+                    return total_troops, total_nodes, path
+                
+                for neighbor in self.G.neighbors(current):
+                    if neighbor not in visited:
+                        troops = self.G.nodes[neighbor]['troops']
+                        new_total_troops = total_troops + (troops if self.G.nodes[neighbor]['owner'] != 'me' else 0)
+                        new_path = path + [neighbor]
+                        heapq.heappush(pq, (new_total_troops, total_nodes + 1, neighbor, new_path)) # type: ignore
+            
+            return float('inf'), float('inf'), []  # type: ignore # In case there's no valid path
+
+        results = []
+        
+        for continent_name, continent_nodes in self.continents.items():
+            optimal_troops = float('inf')
+            optimal_nodes = float('inf')
+            optimal_path = []
+            
+            for my_node in my_nodes:
+                troops, nodes, path = dijkstra_with_troops(my_node, continent_nodes)
+                if (troops, nodes) < (optimal_troops, optimal_nodes):
+                    optimal_troops = troops
+                    optimal_nodes = nodes
+                    optimal_path = path
+            
+            results.append([continent_name, optimal_path, optimal_troops])
+        
+        for name, nodes in self.continents.items():
+            continents_troops = sum([self.G.nodes[node]['troops'] for node in nodes if self.G.nodes[node]['owner'] != 'me'])
+            for i in results:
+                if i[0] == name:
+                    i[2] += continents_troops
+                    if len(i[1])>1:
+                        i[2] -= self.G.nodes[i[1][-1]]['troops']
+            
+        return sorted(results, key=lambda x: (x[2], len(x[1])))  # Sort by the total troops required and path length
+        # e.g[['NA', [0], 0], ['SA', [2, 30], 40], ['EU', [4, 10], 70],...

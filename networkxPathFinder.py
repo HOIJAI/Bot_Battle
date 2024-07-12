@@ -1,121 +1,128 @@
 import networkx as nx
-from collections import defaultdict, deque
 import heapq
-# import matplotlib.pyplot as plt
+from typing import List, Dict, Tuple
 
 # Create an empty graph
 G = nx.Graph()
 
-# Add nodes from 0 to 41
-G.add_nodes_from(list(range(42)), troops = 0, owner = None)
+# Add nodes from 0 to 41 with default attributes
+G.add_nodes_from(range(42), troops=0, owner=None)
 
-# Add edges
-G.add_edges_from([(0,1),(0,5),(0,21)])
-G.add_edges_from([(1,5),(1,6),(1,8)])
-G.add_edges_from([(2,8),(2,3),(2,30)])
-G.add_edges_from([(3,2),(3,8),(3,6),(3,7)])
-G.add_edges_from([(4,5),(4,6),(4,7),(4,10)])
-G.add_edges_from([(5,0),(5,1),(5,6),(5,4)])
-G.add_edges_from([(6,1),(6,5),(6,4),(6,7),(6,3),(6,8)])
-G.add_edges_from([(7,3),(7,4),(7,6)])
-G.add_edges_from([(9,10),(9,11),(9,12),(9,15)])
-G.add_edges_from([(10,4),(10,9),(10,12)])
-G.add_edges_from([(11,12),(11,9),(11,15),(11,13),(11,14)])
-G.add_edges_from([(12,10),(12,9),(12,11),(12,14)])
-G.add_edges_from([(13,11),(13,14),(13,15),(13,34)])
-G.add_edges_from([(14,12),(14,11),(14,13),(14,16),(14,22)])
-G.add_edges_from([(15,9),(15,11),(15,13),(15,36)])
-G.add_edges_from([(16,14),(16,26),(16,17),(16,18),(16,22)])
-G.add_edges_from([(17,16),(17,18),(17,26),(17,25),(17,23),(17,24)])
-G.add_edges_from([(18,16),(18,17),(18,22),(18,24)])
-G.add_edges_from([(19,25),(19,21),(19,23),(19,27)])
-G.add_edges_from([(20,23),(20,21)])
-G.add_edges_from([(21,27),(21,20),(21,19)])
-G.add_edges_from([(24,17),(24,18),(24,40)])
-G.add_edges_from([(25,26),(25,27),(25,19),(25,17)])
-G.add_edges_from([(28,29),(28,31)])
-G.add_edges_from([(29,30),(29,36),(29,31),(29,28)])
-G.add_edges_from([(30,2),(30,31),(30,29)])
-G.add_edges_from([(32,36),(32,33),(32,37)])
-G.add_edges_from([(33,34),(33,35),(33,32),(33,37)])
-G.add_edges_from([(34,36),(34,13),(34,33)])
-G.add_edges_from([(35,37),(35,33)])
-G.add_edges_from([(38,39),(38,41)])
-G.add_edges_from([(39,41)])
-G.add_edges_from([(40,24),(40,41),(40,39)])
+# Add edges between nodes
+edges = [
+    (0, 1), (0, 5), (0, 21), (1, 5), (1, 6), (1, 8), (2, 8), (2, 3), (2, 30),
+    (3, 2), (3, 8), (3, 6), (3, 7), (4, 5), (4, 6), (4, 7), (4, 10), (5, 0),
+    (5, 1), (5, 6), (5, 4), (6, 1), (6, 5), (6, 4), (6, 7), (6, 3), (6, 8),
+    (7, 3), (7, 4), (7, 6), (9, 10), (9, 11), (9, 12), (9, 15), (10, 4),
+    (10, 9), (10, 12), (11, 12), (11, 9), (11, 15), (11, 13), (11, 14),
+    (12, 10), (12, 9), (12, 11), (12, 14), (13, 11), (13, 14), (13, 15),
+    (13, 34), (14, 12), (14, 11), (14, 13), (14, 16), (14, 22), (15, 9),
+    (15, 11), (15, 13), (15, 36), (16, 14), (16, 26), (16, 17), (16, 18),
+    (16, 22), (17, 16), (17, 18), (17, 26), (17, 25), (17, 23), (17, 24),
+    (18, 16), (18, 17), (18, 22), (18, 24), (19, 25), (19, 21), (19, 23),
+    (19, 27), (20, 23), (20, 21), (21, 27), (21, 20), (21, 19), (24, 17),
+    (24, 18), (24, 40), (25, 26), (25, 27), (25, 19), (25, 17), (28, 29),
+    (28, 31), (29, 30), (29, 36), (29, 31), (29, 28), (30, 2), (30, 31),
+    (30, 29), (32, 36), (32, 33), (32, 37), (33, 34), (33, 35), (33, 32),
+    (33, 37), (34, 36), (34, 13), (34, 33), (34, 22), (35, 37), (35, 33),
+    (38, 39), (38, 41), (39, 41), (40, 24), (40, 41), (40, 39)
+]
 
+G.add_edges_from(edges)
 
-NA = [8, 3, 2, 6, 1, 0, 7, 5, 4]
-SA = [30, 31, 29, 28]
-EU = [14, 11, 10, 9, 12, 15, 13]
-AF = [35, 32, 34, 33, 36, 37]
-AS = [19, 23, 24, 21, 20, 26, 16, 22, 25, 17, 18, 27]
-AU = [40, 41, 39, 38]
+# Define continents with their respective nodes
+continents = {
+    'NA': [8, 3, 2, 6, 1, 0, 7, 5, 4],
+    'SA': [30, 31, 29, 28],
+    'EU': [14, 11, 10, 9, 12, 15, 13],
+    'AF': [35, 32, 34, 33, 36, 37],
+    'AS': [19, 23, 24, 21, 20, 26, 16, 22, 25, 17, 18, 27],
+    'AU': [40, 41, 39, 38]
+}
 
-continents = {'NA': NA, 'SA': SA, 'EU': EU, 'AF': AF, 'AS': AS, 'AU': AU}
-
+# Assign continent groups to nodes
 for group, nodes in continents.items():
     for node in nodes:
         G.nodes[node]['group'] = group
 
-
-    def set_troops_and_owners(node_data: Dict[int, Dict[str, int]]):
-        for node, data in node_data.items():
-            if node in G:
-                G.nodes[node]['troops'] = data.get('troops', 0)
-                G.nodes[node]['owner'] = data.get('owner', None)
-
-    def find_border_nodes(my_nodes: List[int]) -> List[int]:
-        border_nodes = []
-        for node in my_nodes:
-            for neighbor in G.neighbors(node):
-                if G.nodes[neighbor]['owner'] != 'me':
-                    border_nodes.append(node)
-                    break
-        return border_nodes
-
-    def find_optimal_path(start_node: int, target_nodes: List[int]) -> List[int]:
-        min_heap = [(G.nodes[start_node]['troops'], start_node, [start_node])]
+def find_optimal_paths_to_continents(G: nx.Graph, my_nodes: List[int], continents: Dict[str, List[int]]):
+    def dijkstra_with_troops(start: int, target_continent: List[int]) -> Tuple[int, int, List[int]]:
+        pq = [(0, 0, start, [start])]  # Priority queue with (total troops, total nodes, current node, path)
         visited = set()
         
-        while min_heap:
-            current_troops, current_node, path = heapq.heappop(min_heap)
+        while pq:
+            total_troops, total_nodes, current, path = heapq.heappop(pq)
             
-            if current_node in visited:
+            if current in visited:
                 continue
+            visited.add(current)
             
-            visited.add(current_node)
+            if current in target_continent:
+                return total_troops, total_nodes, path
             
-            if all(node in visited for node in target_nodes):
-                return path
-            
-            for neighbor in G.neighbors(current_node):
+            for neighbor in G.neighbors(current):
                 if neighbor not in visited:
-                    total_troops = current_troops + G.nodes[neighbor]['troops']
-                    heapq.heappush(min_heap, (total_troops, neighbor, path + [neighbor]))
+                    troops = G.nodes[neighbor]['troops']
+                    new_total_troops = total_troops + (troops if G.nodes[neighbor]['owner'] != 'me' else 0)
+                    new_path = path + [neighbor]
+                    heapq.heappush(pq, (new_total_troops, total_nodes + 1, neighbor, new_path)) # type: ignore
         
-        return []
+        return float('inf'), float('inf'), []  # type: ignore # In case there's no valid path
 
-    def calculate_optimal_paths(my_nodes: List[int]) -> List[Tuple[str, List[int], int]]:
-        border_nodes = find_border_nodes(my_nodes)
-        optimal_paths = []
+    results = []
+    
+    for continent_name, continent_nodes in continents.items():
+        optimal_troops = float('inf')
+        optimal_nodes = float('inf')
+        optimal_path = []
         
-        for continent, nodes in continents.items():
-            continent_nodes = set(nodes)
-            best_path = None
-            min_troops = float('inf')
-            
-            for border_node in border_nodes:
-                path = find_optimal_path(border_node, list(continent_nodes))
-                if path:
-                    path_troops = sum(G.nodes[node]['troops'] for node in path)
-                    if path_troops < min_troops:
-                        min_troops = path_troops
-                        best_path = path
-            
-            if best_path:
-                optimal_paths.append((continent, best_path, min_troops))
+        for my_node in my_nodes:
+            troops, nodes, path = dijkstra_with_troops(my_node, continent_nodes)
+            if (troops, nodes) < (optimal_troops, optimal_nodes):
+                optimal_troops = troops
+                optimal_nodes = nodes
+                optimal_path = path
         
-        optimal_paths.sort(key=lambda x: x[2])
-        return optimal_paths
+        results.append([continent_name, optimal_path, optimal_troops])
+    
+    for name, nodes in continents.items():
+        continents_troops = sum([G.nodes[node]['troops'] for node in nodes if G.nodes[node]['owner'] != 'me'])
+        for i in results:
+            if i[0] == name:
+                i[2] += continents_troops
+                if len(i[1])>1:
+                    i[2] -= G.nodes[i[1][-1]]['troops'] #repeated
+                # i[2] += G.nodes[i[1][0]]['troops']
+    
+    return sorted(results, key=lambda x: (x[2], len(x[1])))  # Sort by the total troops required and path length
+    # e.g[['NA', [0], -10], ['SA', [2, 30], 40], ['EU', [4, 10], 70],...
 
+# Example node ownership and troops assignment
+
+# G.nodes[11]['owner'] = 'me'
+# G.nodes[15]['owner'] = 'me'
+# G.nodes[13]['owner'] = 'me'
+# G.nodes[14]['owner'] = 'me'
+# G.nodes[10]['owner'] = 'me'
+# G.nodes[9]['owner'] = 'me'
+# G.nodes[12]['owner'] = 'me'
+for i in range(35,39):
+    G.nodes[i]['owner'] = 'me'
+G.nodes[32]['owner'] = 'me'
+G.nodes[33]['owner'] = 'me'
+
+for i in range(42):
+    G.nodes[i]['troops'] = 10
+# G.nodes[10]['troops'] = 1
+# G.nodes[9]['troops'] = 1
+# G.nodes[12]['troops'] = 1
+# G.nodes[15]['troops'] = 3
+# G.nodes[13]['troops'] = 4
+# G.nodes[11]['troops'] = 3
+
+# Path should skip nodes with high troops like 14 and 16 from my nodes to AU
+my_nodes = [node for node in G.nodes if G.nodes[node]['owner'] == 'me']
+
+# Find optimal paths
+optimal_paths = find_optimal_paths_to_continents(G, my_nodes, continents)
+print(optimal_paths)
