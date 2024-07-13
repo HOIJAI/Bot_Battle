@@ -71,14 +71,15 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack, mapNetwor
         result = mapNetwork.shortest_path_from_node_to_continent(border_node, continent_to_attack)
         min_troops_needed_to_reach_target_continent = result[0]
         # check if our border has sufficient troops for conquering the continent
-        if troops_in_border > (min_troops_needed_to_conquer + min_troops_needed_to_reach_target_continent):
-            difference = troops_in_border - min_troops_needed_to_conquer - min_troops_needed_to_reach_target_continent
-            if difference > max_diff:
-                max_diff = difference
-                best_node = border_node
-                path = result[1]
-                # my_troops = mapNetwork.get_node_troops(border_node),
-                # enemy_troops = min_troops_needed_to_conquer + min_troops_needed_to_reach_target_continent
+        if troops_in_border < (min_troops_needed_to_conquer + min_troops_needed_to_reach_target_continent):
+            continue
+        difference = troops_in_border - min_troops_needed_to_conquer - min_troops_needed_to_reach_target_continent
+        if difference > max_diff:
+            max_diff = difference
+            best_node = border_node
+            path = result[1]
+            # my_troops = mapNetwork.get_node_troops(border_node),
+            # enemy_troops = min_troops_needed_to_conquer + min_troops_needed_to_reach_target_continent
 
     
     ######################################################################################
