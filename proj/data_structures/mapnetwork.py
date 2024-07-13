@@ -311,6 +311,77 @@ class MapNetwork:
 # Sort by the total troops required and path length
         # e.g[['NA', [0], 0], ['SA', [2, 30], 40], ['EU', [4, 10], 70],...
 
+    def get_total_number_of_enemy_troops_by_continent(self):
+        result = {}
+
+        nodes_owned_by_me = self.nodes_with_same_owner('me')
+
+        for key, value in self.continents.items():
+            enemy_troops = 0
+            for n in value:
+                if n in nodes_owned_by_me:
+                    continue
+                enemy_troops += self.get_node_troops(n)
+            result[key] = enemy_troops
+
+        return result
+
+    def is_node_in_continent(self, node, continent):
+        return node in self.continents[continent]
+
+    # node is a number
+    # continent is one of 'NA', 'SA', 'EU', 'AF', 'AS', 'AU'
+    # return value is the min distance to any territories of the continent from node as the starting point, inf if no path found
+    def shortest_path_from_node_to_continent(self, node, continent):
+        if self.is_node_in_continent(node, continent):
+            return [0, []]
+        
+        continent_territories = self.continents[continent]
+        enemy_territories = [item for item in continent_territories if not self.get_node_owner(item) == 'me']
+
+        # dijkstra
+        distances = {vertex: float('inf') for vertex in range(42)}
+        distances[node] = 0
+
+        pq = [(0, node)]
+        visited = set()
+        previous = {vertex: None for vertex in range(42)}
+
+        while pq:
+            # pop vertex with smallest dist
+            current_distance, current_vertex = heapq.heappop(pq)
+            if current_vertex in visited:
+                continue
+            visited.add(current_vertex)
+
+            for neighbor in self.G.neighbors(current_vertex):
+                if neighbor in visited:
+                    continue
+                if self.get_node_owner(neighbor) == 'me':
+                    visited.add(neighbor)
+                    continue
+                new_distance = current_distance + self.get_node_troops(neighbor)
+                if new_distance < distances[neighbor]:
+                    distances[neighbor] = new_distance
+                    previous[neighbor] = current_vertex
+                    heapq.heappush(pq, (new_distance, neighbor))
+
+        result = float('inf')
+        for territory in enemy_territories:
+            if distances[territory] < result:
+                result = distances[territory]
+                dest = territory
+        
+        # get the path from border to continent
+        path = []
+        current = dest
+        while current is not None:
+            path.append(current)
+            current = previous[current]
+        path = path[::-1] # reverse path to get start to end
+
+        return [ result, path ]
+
 
     # def update_mapnetwork(self, game: Game):
     #     player_list = list(range(5))

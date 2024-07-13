@@ -3,17 +3,12 @@
 - Goal 2: finish the enemy when opportunity arises
 
 Core logic
-1. Find continent with the least enemy troops
-2. Check if already owned the continent
-3. If owned
-    -> look into conquering the next continent
-    -> if not enough troops to conquer a new continent
+1. Find continent with the least enemy troops that is not owned
+    -> look into conquering that continent
+    -> if not enough troops to conquer the continent with least enemy troops
         -> distrup others
         -> pass round and save more troops
-4. If not fully occupied
-    -> look into conquering the next continent
-        -> if conquered new continet
-            -> then go back to 3
+
 
 
 Conquering Algorithm
@@ -32,3 +27,7 @@ Distrup algorithm
 3. attack to the territory specified by dijkstra
 4. done
 
+## handle_troops_after_attack
+- Depends on the attach phrase
+- Could store the action taken in the attack phrase in the global store
+- 
