@@ -58,7 +58,7 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack, mapNetwor
                             return game.move_attack(query, candidate_attacker, candidate_target, min(3, game.state.territories[candidate_attacker].troops - 1))
                         
     '''game_phase'''
-    game_state = len(game.state.recording) #game starts at 133
+    game_state = len(game.state.recording) #game starts after 127
     avg = mapNetwork.get_average_troops() #average troops per players
     domination = len(mapNetwork.check_my_ownership()) + len(mapNetwork.check_ownership()) #how many continents are near conquered already
     # locate my continent

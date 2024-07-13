@@ -44,22 +44,22 @@ def handle_troops_after_attack(game: Game, bot_state: BotState, query: QueryTroo
     adj = list(set(mapNetwork.get_neighbors(behind)) - set([attacked]) - set(my_territories))
     # adj = mapNetwork.get_neighbors(behind)
     # Find the adjacent enemy territory with the most troops
-    most_troops = 1
+    most_adj_enemy_troops = 1
     for i in adj:
-        if mapNetwork.get_node_troops(i) > most_troops:
-            most_troops = mapNetwork.get_node_troops(i)
+        if mapNetwork.get_node_troops(i) > most_adj_enemy_troops:
+            most_adj_enemy_troops = mapNetwork.get_node_troops(i)
 
-    troops_available = game.state.territories[move_attack.attacking_territory].troops
+    my_troops_available = game.state.territories[move_attack.attacking_territory].troops
 
     # Determine the number of troops to move based on the available troops and adjacent enemy troops
-    if most_troops >= troops_available-3:
-        if most_troops*2 > troops_available-1:
-            num_of_troops = (2 if troops_available ==3 else 3)  # only move 3 troops ahead or 2 if conquered
+    if most_adj_enemy_troops >= my_troops_available-3:
+        if most_adj_enemy_troops*2 > my_troops_available-1:
+            num_of_troops_to_next_territory = (2 if my_troops_available ==3 else 3)  # only move 3 troops ahead or 2 if conquered
         else:
-            num_of_troops = troops_available-1
+            num_of_troops_to_next_territory = my_troops_available-1
     else:
-        num_of_troops = troops_available - most_troops
+        num_of_troops_to_next_territory = my_troops_available - most_adj_enemy_troops
 
 
-    return game.move_troops_after_attack(query, num_of_troops)
+    return game.move_troops_after_attack(query, num_of_troops_to_next_territory)
 
