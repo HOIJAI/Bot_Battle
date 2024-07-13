@@ -64,7 +64,6 @@ def handle_fortify(game: Game, bot_state: BotState, query: QueryFortify, mapNetw
             #     if mapNetwork.get_node_troops(j) > min_troops_ahead: #this is max troops in front of border
             #         min_troops_ahead = mapNetwork.get_node_troops(j)
             #         troops_ahead_node = i
-
     else:
         for i in centre:
             if mapNetwork.get_node_troops(i) > max_troops_behind:

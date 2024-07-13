@@ -54,7 +54,7 @@ def handle_troops_after_attack(game: Game, bot_state: BotState, query: QueryTroo
     # Determine the number of troops to move based on the available troops and adjacent enemy troops
     if most_troops >= troops_available-3:
         if most_troops*2 > troops_available-1:
-            num_of_troops = 3  # only move 3 troops ahead
+            num_of_troops = (2 if troops_available ==3 else 3)  # only move 3 troops ahead or 2 if conquered
         else:
             num_of_troops = troops_available-1
     else:

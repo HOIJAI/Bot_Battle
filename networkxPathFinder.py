@@ -45,57 +45,174 @@ for group, nodes in continents.items():
     for node in nodes:
         G.nodes[node]['group'] = group
 
-def find_optimal_paths_to_continents(G: nx.Graph, my_nodes: List[int], continents: Dict[str, List[int]]):
-    def dijkstra_with_troops(start: int, target_continent: List[int]) -> Tuple[int, int, List[int]]:
-        pq = [(0, 0, start, [start])]  # Priority queue with (total troops, total nodes, current node, path)
-        visited = set()
+import time
+
+
+# def find_optimal_paths_to_continents(my_nodes):
+#     # Cache for memoization
+#     memo = {}
+
+#     def dijkstra_with_troops(start: int, target_continent):
+#         if (start, tuple(target_continent)) in memo:
+#             return memo[(start, tuple(target_continent))]
+        
+#         pq = [(0, 0, start, [start])]
+#         visited = set()
+        
+#         while pq:
+#             total_troops, total_nodes, current, path = heapq.heappop(pq)
+            
+#             if current in visited:
+#                 continue
+#             visited.add(current)
+            
+#             if current in target_continent:
+#                 result = (total_troops, total_nodes, path)
+#                 memo[(start, tuple(target_continent))] = result
+#                 return result
+            
+#             for neighbor in G.neighbors(current):
+#                 if neighbor not in visited:
+#                     troops = G.nodes[neighbor]['troops']
+#                     new_total_troops = total_troops + (troops if G.nodes[neighbor]['owner'] != 'me' else 0)
+#                     new_path = path + [neighbor]
+#                     heapq.heappush(pq, (new_total_troops, total_nodes + 1, neighbor, new_path))
+        
+#         result = (float('inf'), float('inf'), [])
+#         memo[(start, tuple(target_continent))] = result
+#         return result
+
+#     results = []
+
+#     for continent_name, continent_nodes in continents.items():
+#         optimal_troops = float('inf')
+#         optimal_nodes = float('inf')
+#         optimal_path = []
+
+#         for my_node in my_nodes:
+#             troops, nodes, path = dijkstra_with_troops(my_node, continent_nodes)
+#             if (troops, nodes) < (optimal_troops, optimal_nodes):
+#                 optimal_troops = troops
+#                 optimal_nodes = nodes
+#                 optimal_path = path
+        
+#         results.append([continent_name, optimal_path, optimal_troops])
+    
+#     for i in results:
+#         continent_name = i[0]
+#         path = i[1]
+#         if path:
+#             continent_nodes = continents[continent_name]
+#             continents_troops = sum(G.nodes[node]['troops'] for node in continent_nodes if G.nodes[node]['owner'] != 'me')
+#             i[2] += continents_troops - (G.nodes[path[-1]]['troops'] if G.nodes[path[-1]]['owner'] != 'me' else 0)
+    
+#     return sorted(results, key=lambda x: (x[2], len(x[1])))
+
+
+def find_optimal_paths_to_continents(my_nodes):
+    # Cache for memoization
+    memo = {}
+
+    def dijkstra_with_troops(start_nodes, target_continent):
+        target_set = set(target_continent)
+        pq = [(0, 0, start, [start]) for start in start_nodes]
+        heapq.heapify(pq)
+        visited = {}
         
         while pq:
             total_troops, total_nodes, current, path = heapq.heappop(pq)
             
-            if current in visited:
+            if current in visited and visited[current] <= total_troops:
                 continue
-            visited.add(current)
+            visited[current] = total_troops
             
-            if current in target_continent:
+            if current in target_set:
+                memo[(tuple(start_nodes), tuple(target_continent))] = (total_troops, total_nodes, path)
                 return total_troops, total_nodes, path
             
             for neighbor in G.neighbors(current):
-                if neighbor not in visited:
+                if neighbor not in visited or total_troops < visited[neighbor]:
                     troops = G.nodes[neighbor]['troops']
                     new_total_troops = total_troops + (troops if G.nodes[neighbor]['owner'] != 'me' else 0)
                     new_path = path + [neighbor]
-                    heapq.heappush(pq, (new_total_troops, total_nodes + 1, neighbor, new_path)) # type: ignore
+                    heapq.heappush(pq, (new_total_troops, total_nodes + 1, neighbor, new_path))
         
-        return float('inf'), float('inf'), []  # type: ignore # In case there's no valid path
+        result = (float('inf'), float('inf'), [])
+        memo[(tuple(start_nodes), tuple(target_continent))] = result
+        return result
 
     results = []
-    
+
     for continent_name, continent_nodes in continents.items():
-        optimal_troops = float('inf')
-        optimal_nodes = float('inf')
-        optimal_path = []
-        
-        for my_node in my_nodes:
-            troops, nodes, path = dijkstra_with_troops(my_node, continent_nodes)
-            if (troops, nodes) < (optimal_troops, optimal_nodes):
-                optimal_troops = troops
-                optimal_nodes = nodes
-                optimal_path = path
+        if (tuple(my_nodes), tuple(continent_nodes)) in memo:
+            optimal_troops, optimal_nodes, optimal_path = memo[(tuple(my_nodes), tuple(continent_nodes))]
+        else:
+            optimal_troops, optimal_nodes, optimal_path = dijkstra_with_troops(my_nodes, continent_nodes)
         
         results.append([continent_name, optimal_path, optimal_troops])
     
-    for name, nodes in continents.items():
-        continents_troops = sum([G.nodes[node]['troops'] for node in nodes if G.nodes[node]['owner'] != 'me'])
-        for i in results:
-            if i[0] == name:
-                i[2] += continents_troops
-                if len(i[1])>1:
-                    i[2] -= G.nodes[i[1][-1]]['troops'] #repeated
-                # i[2] += G.nodes[i[1][0]]['troops']
+    for i in results:
+        continent_name = i[0]
+        path = i[1]
+        if path:
+            continent_nodes = continents[continent_name]
+            continents_troops = sum(G.nodes[node]['troops'] for node in continent_nodes if G.nodes[node]['owner'] != 'me')
+            i[2] += continents_troops - (G.nodes[path[-1]]['troops'] if G.nodes[path[-1]]['owner'] != 'me' else 0)
     
-    return sorted(results, key=lambda x: (x[2], len(x[1])))  # Sort by the total troops required and path length
-    # e.g[['NA', [0], -10], ['SA', [2, 30], 40], ['EU', [4, 10], 70],...
+    return sorted(results, key=lambda x: (x[2], len(x[1])))
+
+
+# def find_optimal_paths_to_continents(G: nx.Graph, my_nodes: List[int], continents: Dict[str, List[int]]):
+#     def dijkstra_with_troops(start: int, target_continent: List[int]) -> Tuple[int, int, List[int]]:
+#         pq = [(0, 0, start, [start])]  # Priority queue with (total troops, total nodes, current node, path)
+#         visited = set()
+        
+#         while pq:
+#             total_troops, total_nodes, current, path = heapq.heappop(pq)
+            
+#             if current in visited:
+#                 continue
+#             visited.add(current)
+            
+#             if current in target_continent:
+#                 return total_troops, total_nodes, path
+            
+#             for neighbor in G.neighbors(current):
+#                 if neighbor not in visited:
+#                     troops = G.nodes[neighbor]['troops']
+#                     new_total_troops = total_troops + (troops if G.nodes[neighbor]['owner'] != 'me' else 0)
+#                     new_path = path + [neighbor]
+#                     heapq.heappush(pq, (new_total_troops, total_nodes + 1, neighbor, new_path)) # type: ignore
+        
+#         return float('inf'), float('inf'), []  # type: ignore # In case there's no valid path
+
+#     results = []
+    
+#     for continent_name, continent_nodes in continents.items():
+#         optimal_troops = float('inf')
+#         optimal_nodes = float('inf')
+#         optimal_path = []
+        
+#         for my_node in my_nodes:
+#             troops, nodes, path = dijkstra_with_troops(my_node, continent_nodes)
+#             if (troops, nodes) < (optimal_troops, optimal_nodes):
+#                 optimal_troops = troops
+#                 optimal_nodes = nodes
+#                 optimal_path = path
+        
+#         results.append([continent_name, optimal_path, optimal_troops])
+    
+#     for name, nodes in continents.items():
+#         continents_troops = sum([G.nodes[node]['troops'] for node in nodes if G.nodes[node]['owner'] != 'me'])
+#         for i in results:
+#             if i[0] == name:
+#                 i[2] += continents_troops
+#                 if len(i[1])>1:
+#                     i[2] -= G.nodes[i[1][-1]]['troops'] #repeated
+#                 # i[2] += G.nodes[i[1][0]]['troops']
+    
+#     return sorted(results, key=lambda x: (x[2], len(x[1])))  # Sort by the total troops required and path length
+#     # e.g[['NA', [0], -10], ['SA', [2, 30], 40], ['EU', [4, 10], 70],...
 
 # Example node ownership and troops assignment
 
@@ -124,5 +241,8 @@ for i in range(42):
 my_nodes = [node for node in G.nodes if G.nodes[node]['owner'] == 'me']
 
 # Find optimal paths
-optimal_paths = find_optimal_paths_to_continents(G, my_nodes, continents)
-print(optimal_paths)
+start = time.process_time()
+optimal_paths = find_optimal_paths_to_continents (my_nodes)
+end = time.process_time()
+
+print(optimal_paths, 12000*(end-start))

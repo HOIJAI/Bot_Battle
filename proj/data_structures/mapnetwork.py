@@ -17,7 +17,7 @@ class MapNetwork:
             (7,3), (7,4), (7,6), (9,10), (9,11), (9,12), (9,15), (10,4),
             (10,9), (10,12), (11,12), (11,9), (11,15), (11,13), (11,14),
             (12,10), (12,9), (12,11), (12,14), (13,11), (13,14), (13,15),
-            (13,34), (14,12), (14,11), (14,13), (14,16), (14,22), (15,9),
+            (13,34), (13,22), (14,12), (14,11), (14,13), (14,16), (14,22), (15,9),
             (15,11), (15,13), (15,36), (16,14), (16,26), (16,17), (16,18),
             (16,22), (17,16), (17,18), (17,26), (17,25), (17,23), (17,24),
             (18,16), (18,17), (18,22), (18,24), (19,25), (19,21), (19,23),
@@ -25,7 +25,7 @@ class MapNetwork:
             (24,18), (24,40), (25,26), (25,27), (25,19), (25,17), (28,29),
             (28,31), (29,30), (29,36), (29,31), (29,28), (30,2), (30,31),
             (30,29), (32,36), (32,33), (32,37), (33,34), (33,35), (33,32),
-            (33,37), (34,36), (34,13), (34,33), (35,37), (35,33), (38,39),
+            (33,37), (34,36), (34,13), (34,22), (34,33), (35,37), (35,33), (38,39),
             (38,41), (39,41), (40,24), (40,41), (40,39)
         ]
         self.G.add_edges_from(edges)
@@ -256,74 +256,78 @@ class MapNetwork:
 
         return shortest_path #return list from start_node
     
+
     def find_optimal_paths_to_continents(self, my_nodes):
-        def dijkstra_with_troops(start: int, target_continent):
-            pq = [(0, 0, start, [start])]  # Priority queue with (total troops, total nodes, current node, path)
-            visited = set()
+        # Cache for memoization
+        memo = {}
+
+        def dijkstra_with_troops(start_nodes, target_continent):
+            target_set = set(target_continent)
+            pq = [(0, 0, start, [start]) for start in start_nodes]
+            heapq.heapify(pq)
+            visited = {}
             
             while pq:
                 total_troops, total_nodes, current, path = heapq.heappop(pq)
                 
-                if current in visited:
+                if current in visited and visited[current] <= total_troops:
                     continue
-                visited.add(current)
+                visited[current] = total_troops
                 
-                if current in target_continent:
+                if current in target_set:
+                    memo[(tuple(start_nodes), tuple(target_continent))] = (total_troops, total_nodes, path)
                     return total_troops, total_nodes, path
                 
                 for neighbor in self.G.neighbors(current):
-                    if neighbor not in visited:
+                    if neighbor not in visited or total_troops < visited[neighbor]:
                         troops = self.G.nodes[neighbor]['troops']
                         new_total_troops = total_troops + (troops if self.G.nodes[neighbor]['owner'] != 'me' else 0)
                         new_path = path + [neighbor]
-                        heapq.heappush(pq, (new_total_troops, total_nodes + 1, neighbor, new_path)) # type: ignore
+                        heapq.heappush(pq, (new_total_troops, total_nodes + 1, neighbor, new_path))
             
-            return float('inf'), float('inf'), []  # type: ignore # In case there's no valid path
+            result = (float('inf'), float('inf'), [])
+            memo[(tuple(start_nodes), tuple(target_continent))] = result
+            return result
 
         results = []
-        
+
         for continent_name, continent_nodes in self.continents.items():
-            optimal_troops = float('inf')
-            optimal_nodes = float('inf')
-            optimal_path = []
-            
-            for my_node in my_nodes:
-                troops, nodes, path = dijkstra_with_troops(my_node, continent_nodes)
-                if (troops, nodes) < (optimal_troops, optimal_nodes):
-                    optimal_troops = troops
-                    optimal_nodes = nodes
-                    optimal_path = path
+            if (tuple(my_nodes), tuple(continent_nodes)) in memo:
+                optimal_troops, optimal_nodes, optimal_path = memo[(tuple(my_nodes), tuple(continent_nodes))]
+            else:
+                optimal_troops, optimal_nodes, optimal_path = dijkstra_with_troops(my_nodes, continent_nodes)
             
             results.append([continent_name, optimal_path, optimal_troops])
         
-        for name, nodes in self.continents.items():
-            continents_troops = sum([self.G.nodes[node]['troops'] for node in nodes if self.G.nodes[node]['owner'] != 'me'])
-            for i in results:
-                if i[0] == name:
-                    i[2] += continents_troops
-                    if len(i[1])>1:
-                        i[2] -= self.G.nodes[i[1][-1]]['troops']
-            
-        return sorted(results, key=lambda x: (x[2], len(x[1])))  # Sort by the total troops required and path length
+        for i in results:
+            continent_name = i[0]
+            path = i[1]
+            if path:
+                continent_nodes = self.continents[continent_name]
+                continents_troops = sum(self.G.nodes[node]['troops'] for node in continent_nodes if self.G.nodes[node]['owner'] != 'me')
+                i[2] += continents_troops - (self.G.nodes[path[-1]]['troops'] if self.G.nodes[path[-1]]['owner'] != 'me' else 0)
+        
+        return sorted(results, key=lambda x: (x[2], len(x[1])))
+# Sort by the total troops required and path length
         # e.g[['NA', [0], 0], ['SA', [2, 30], 40], ['EU', [4, 10], 70],...
 
 
-    def update_mapnetwork(self, game: Game):
-        player_list = list(range(5))
-        other_players = list(set(player_list) - {game.state.me.player_id})
+    # def update_mapnetwork(self, game: Game):
+    #     player_list = list(range(5))
+    #     other_players = list(set(player_list) - {game.state.me.player_id})
 
-        my_territories = game.state.get_territories_owned_by(game.state.me.player_id)
-        my_territories_model = [game.state.territories[x] for x in my_territories]
-        #get all the information into the map
-        for i in my_territories:
-            self.set_node_owner(i,'me')
-        for i in my_territories_model:
-            self.set_node_troops(i.territory_id, i.troops)
+    #     my_territories = game.state.get_territories_owned_by(game.state.me.player_id)
+    #     my_territories_model = [game.state.territories[x] for x in my_territories]
+    #     #get all the information into the map
+    #     for i in my_territories:
+    #         self.set_node_owner(i,'me')
+    #     for i in my_territories_model:
+    #         self.set_node_troops(i.territory_id, i.troops)
 
-        for i in other_players:
-            enemy_territories = game.state.get_territories_owned_by (i)
-            enemy_territories_model = [game.state.territories[x] for x in enemy_territories]
-            for j in enemy_territories:
-                self.set_node_owner(j, str(i))
-            for j in enemy_territories_model:
-                self.set_node_troops(j.territory_id, j.troops)
+    #     for i in other_players:
+    #         enemy_territories = game.state.get_territories_owned_by (i)
+    #         enemy_territories_model = [game.state.territories[x] for x in enemy_territories]
+    #         for j in enemy_territories:
+    #             self.set_node_owner(j, str(i))
+    #         for j in enemy_territories_model:
+    #             self.set_node_troops(j.territory_id, j.troops)

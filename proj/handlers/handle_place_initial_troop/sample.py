@@ -47,7 +47,7 @@ def handle_place_initial_troop(game: Game, bot_state: BotState, query: QueryPlac
         enemies_adjacent = list(set(adjacent_to_border) - set(my_territories))
         enemies_model = [game.state.territories[x] for x in enemies_adjacent]
         for k in enemies_model:
-            if i.troops < k.troops:
+            if i.troops <= k.troops:
                 weak_list.append(i.territory_id)
     
     next_list = []

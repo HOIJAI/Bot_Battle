@@ -40,10 +40,10 @@ def handle_distribute_troops(game: Game, bot_state: BotState, query: QueryDistri
             mapNetwork.set_node_troops(j.territory_id, j.troops)
     
     '''game_phases'''
-    game_state = len(game.state.recording) #game starts at 133
-    avg = mapNetwork.get_average_troops() #average troops per players
-    domination = len(mapNetwork.check_my_ownership()) + len(mapNetwork.check_ownership()) #how many continents are near conquered already
-    # locate my continent
+    # game_state = len(game.state.recording) #game starts at 133
+    # avg = mapNetwork.get_average_troops() #average troops per players
+    # domination = len(mapNetwork.check_my_ownership()) + len(mapNetwork.check_ownership()) #how many continents are near conquered already
+    # # locate my continent
 
     my_borders = game.state.get_all_border_territories(my_territories)
     weakest_continent = mapNetwork.find_optimal_paths_to_continents(my_borders)
@@ -56,12 +56,12 @@ def handle_distribute_troops(game: Game, bot_state: BotState, query: QueryDistri
             weak_bridge = i
             least_troops_bridge = mapNetwork.get_node_troops(i)
     
-    strong_border = None
-    most_troops_border = 0
+    weak_border = None
+    least_troops_border = float('inf')
     for i in my_borders:
-        if mapNetwork.get_node_troops(i) >most_troops_border:
-            strong_border = i
-            most_troops_border = mapNetwork.get_node_troops(i)
+        if mapNetwork.get_node_troops(i) < least_troops_border:
+            weak_border = i
+            least_troops_border = mapNetwork.get_node_troops(i)
 
     # check if any enemy border territories have *2 troops than mine, if yes, place troops until my territories = enemies if possible
 
@@ -77,11 +77,10 @@ def handle_distribute_troops(game: Game, bot_state: BotState, query: QueryDistri
                 distributions[i[1][0]] += total_troops
                 total_troops = 0
             
-    
     if total_troops !=0:
-        if my_bridges != None: # The leftover troops will be put some territory (we don't care)
+        if weak_bridge != None: # The leftover troops will be put some territory (we don't care)
             distributions[weak_bridge] += total_troops
-        else:
-            distributions[strong_border] += total_troops
+        elif weak_border != None:
+            distributions[weak_border] += total_troops
 
     return game.move_distribute_troops(query, distributions)

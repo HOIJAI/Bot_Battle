@@ -34,56 +34,55 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack, mapNetwor
 
     def attack_weakest(territories: list[int]) -> Optional[MoveAttack]:
         # We will attack the weakest territory from the list.
-        territories = sorted(territories, key=lambda x: game.state.territories[x].troops)
+        territories = sorted(territories, key=lambda x: game.state.territories[x].troops, reverse=True)
         for candidate_target in territories:
-            candidate_attackers = sorted(list(set(game.state.map.get_adjacent_to(candidate_target)) & set(my_territories)), key=lambda x: game.state.territories[x].troops, reverse=True)
-            for candidate_attacker in candidate_attackers:
-                if game.state.territories[candidate_attacker].troops >= 4 and game.state.territories[candidate_target].troops <= game.state.territories[candidate_attacker].troops//2:
-                    attacker_surrounding = (set(game.state.map.get_adjacent_to(candidate_attacker))-set(my_territories))
-                    target_surrounding = (set(game.state.map.get_adjacent_to(candidate_target))-set(my_territories))
-                    surrounding_enemies = list(attacker_surrounding.union(target_surrounding))
-                    surrounding_troops = []
-                    for i in surrounding_enemies:
-                        surrounding_troops.append(mapNetwork.get_node_troops(i))
-                    if max(surrounding_troops) < mapNetwork.get_node_troops(candidate_attacker):
-                        return game.move_attack(query, candidate_attacker, candidate_target, min(3, game.state.territories[candidate_attacker].troops - 1))
-
+            if mapNetwork.get_node_owner(candidate_target) != 'me':
+                candidate_attackers = sorted(list(set(game.state.map.get_adjacent_to(candidate_target)) & set(my_territories)), key=lambda x: game.state.territories[x].troops, reverse=False)
+                
+                for candidate_attacker in candidate_attackers:
+                    if game.state.territories[candidate_attacker].troops >= 3 and (game.state.territories[candidate_target].troops*1.2 + 2)//1 <= game.state.territories[candidate_attacker].troops:
+                        # attacker_surrounding = (set(game.state.map.get_adjacent_to(candidate_attacker))-set(my_territories))
+                        target_surrounding = (set(game.state.map.get_adjacent_to(candidate_target))-set(my_territories))
+                        #attacker_surrounding.union
+                        surrounding_enemies = list(target_surrounding)
+                        surrounding_troops = []
+                        
+                        for i in surrounding_enemies:
+                            surrounding_troops.append(mapNetwork.get_node_troops(i))
+                        
+                        if surrounding_troops and max(surrounding_troops) < mapNetwork.get_node_troops(candidate_attacker):
+                            if game.state.territories[candidate_attacker].troops >= 4:
+                                return game.move_attack(query, candidate_attacker, candidate_target, min(3, game.state.territories[candidate_attacker].troops - 1))
+                        
+                        elif len(surrounding_troops) == 0:
+                            return game.move_attack(query, candidate_attacker, candidate_target, min(3, game.state.territories[candidate_attacker].troops - 1))
+                        
     '''game_phase'''
     game_state = len(game.state.recording) #game starts at 133
     avg = mapNetwork.get_average_troops() #average troops per players
     domination = len(mapNetwork.check_my_ownership()) + len(mapNetwork.check_ownership()) #how many continents are near conquered already
+    # locate my continent
 
+    my_borders = game.state.get_all_border_territories(my_territories)
+    weakest_continent = mapNetwork.find_optimal_paths_to_continents(my_borders)
+    for continent, node_list, troops_num in weakest_continent:
+        if troops_num != 0:
+            if len(node_list)>1: #not fully conquered
+                move = attack_weakest(node_list[1:])
+                if move != None:
+                    return move
+            elif len(node_list)==1: #im already in the continent:
+                continent_enemies = list(set(mapNetwork.continents[continent]) - set(my_territories))
+                #should make a path such that it will end at the next bridge
+                move = attack_weakest(continent_enemies)
+                if move != None:
+                    return move
 
-    # base_territories = list(set(my_territories)&set(mapNetwork.continents[my_base_continent]))
-    # all_borders = game.state.get_all_border_territories(my_territories) #my territories in that base
-    # border_to_base = game.state.get_all_border_territories(base_territories) #those are MINE
-    # enemies_around_base = list(set(game.state.get_all_adjacent_territories(border_to_base))-set(my_territories))
-    
-    # weakest_continents = mapNetwork.calculate_enemy_troops_by_continent() #list of tuples [('NA',0)]
-
-
-    # early game
-    if avg <=30 or game_state < 300 or domination <=2:
-        strongest_territories = sorted(my_territories, key=lambda x: game.state.territories[x].troops, reverse=False)
-        for territory in strongest_territories:
-            move = attack_weakest(list(set(game.state.map.get_adjacent_to(territory)) - set(my_territories)))
-            if move != None:
-                return move
-    
-    # # mid game
-    elif avg <=60 or game_state <800 and domination <=5: #remember to change back to elif
-        strongest_territories = sorted(my_territories, key=lambda x: game.state.territories[x].troops, reverse=False)
-        for territory in strongest_territories:
-            move = attack_weakest(list(set(game.state.map.get_adjacent_to(territory)) - set(my_territories)))
-            if move != None:
-                return move
+    # if move == None:
+    #     strongest_territories = sorted(my_territories, key=lambda x: game.state.territories[x].troops, reverse=False)
+    #     for territory in strongest_territories:
+    #         move = attack_weakest(list(set(game.state.map.get_adjacent_to(territory)) - set(my_territories)))
+    #         if move != None:
+    #             return move
             
-    # # late game
-    else:
-        strongest_territories = sorted(my_territories, key=lambda x: game.state.territories[x].troops, reverse=False)
-        for territory in strongest_territories:
-            move = attack_weakest(list(set(game.state.map.get_adjacent_to(territory)) - set(my_territories)))
-            if move != None:
-                return move
-
     return game.move_attack_pass(query)
