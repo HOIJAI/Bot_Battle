@@ -35,149 +35,110 @@ def handle_attack(game: Game, bot_state: BotState, query: QueryAttack, mapNetwor
             mapNetwork.set_node_troops(j.territory_id, j.troops)
 
 
-    ##################################################
-    # Step 1: Find continent with least enemy troops #
-    ##################################################
-    # data structure e.g. {'NA': 10, 'SA': 9, 'AU': 0 ...}
-    # if the value is 0, that means the continent is already occupied
-    continent_by_enemy_troops = mapNetwork.get_total_number_of_enemy_troops_by_continent()
+    ##################
+    # Find continent #
+    ##################
+    strategy = "" # either "secure_continent" or "attack"
 
-    # sort the dictionary such that the continent with least enemy troops comes first e.g. { 'AU': 0, 'SA': 9, 'NA': 10 ...}
-    sorted_continent_by_enemy_troops = dict(sorted(continent_by_enemy_troops.items(), key=lambda item: item[1]))
-    
-    for continent, enemy_troops in sorted_continent_by_enemy_troops.items():
-        # skip for continent that we already occupied
-        if enemy_troops == 0:
-            continue
-        else:
+    my_borders = game.state.get_all_border_territories(my_territories)
+    weakest_continent = mapNetwork.find_optimal_paths_to_continents(my_borders)
+    for continent, node_list, troops_num in weakest_continent:
+        # get the first continent that is not fully owned
+        if troops_num != 0:
             continent_to_attack = continent
+            if len(node_list) == 1: #im already in the continent:
+                strategy = "secure_continent"
+            else:
+                strategy = "attack"
             break
     
-    min_troops_needed_to_conquer = continent_by_enemy_troops[continent_to_attack] 
+    min_troops_needed_to_conquer = mapNetwork.get_enemy_troops_in_continent(continent_to_attack)
 
-    ################################################################################################
-    # Step 2: Check if any single territory in the border can fully occupy an unoccupied continent #
-    ################################################################################################
-    # Algorithm
-    # 1. Find shortest path from the border territory to the bridge of that continent
-    # 2. Check if there are still enough troops to conquer the continent
     my_borders = game.state.get_all_border_territories(my_territories)
-    max_diff = 0
+    max_troops = 0
     best_node = -1
-    for border_node in my_borders:
-        troops_in_border = mapNetwork.get_node_troops(border_node)
-        if troops_in_border < min_troops_needed_to_conquer:
-            continue
-        result = mapNetwork.shortest_path_from_node_to_continent(border_node, continent_to_attack)
-        min_troops_needed_to_reach_target_continent = result[0]
-        # check if our border has sufficient troops for conquering the continent
-        ##############################
-        # Change this to adjust risk #
-        ##############################
-        if troops_in_border < (min_troops_needed_to_conquer + min_troops_needed_to_reach_target_continent):
-            continue
-        difference = troops_in_border - min_troops_needed_to_conquer - min_troops_needed_to_reach_target_continent
-        if difference > max_diff:
-            max_diff = difference
-            best_node = border_node
-            path = result[1]
-            # my_troops = mapNetwork.get_node_troops(border_node),
-            # enemy_troops = min_troops_needed_to_conquer + min_troops_needed_to_reach_target_continent
+    path = []
 
-    
-    ######################################################################################
-    # Step 3: We don't have enough to fully occupy a continent, execute other strategies #
-    ######################################################################################
-    # Strategies
+    if strategy == "secure_continent":
+        # Algorithm choosing best border
+        # Best border is chosen with the following criteria
+        #   if border is in continent:
+        #       select the one with highest troops
+        #   if border is outside continent:
+        #       select the one with highest troops after subtracting the troops needed to reach target_continent
+        for border_node in my_borders:
+            troops_in_border = mapNetwork.get_node_troops(border_node)
+            result = mapNetwork.shortest_path_from_node_to_continent(border_node, continent_to_attack)
+            min_troops_needed_to_reach_target_continent = result[0]
+            troops_when_reaching_continent = troops_in_border - min_troops_needed_to_reach_target_continent
+            if troops_when_reaching_continent > max_troops:
+                max_troops = troops_in_border
+                best_node = border_node
+                path = result[1]
+
+
+    elif strategy == "attack":
+        # Check if we can fully occupied, if not then skip round
+        for border_node in my_borders:
+            troops_in_border = mapNetwork.get_node_troops(border_node)
+            if troops_in_border < min_troops_needed_to_conquer:
+                continue
+            result = mapNetwork.shortest_path_from_node_to_continent(border_node, continent_to_attack)
+            min_troops_needed_to_reach_target_continent = result[0]
+            if troops_in_border < (min_troops_needed_to_conquer + min_troops_needed_to_reach_target_continent):
+                continue
+            difference = troops_in_border - min_troops_needed_to_conquer - min_troops_needed_to_reach_target_continent
+            if difference > max_diff:
+                max_diff = difference
+                best_node = border_node
+                path = result[1]
+
+    ##########################
+    # Skip when no best node #
+    ##########################
+    # Other possible trategies when no best node
     # 1. Sabotage continents owner
     # 2. Do nothing to save troops
     # 3. Join forces with other occupied territories
     if best_node == -1:
-        pass
+        return game.move_attack_pass(query)
 
+    ##########
+    # Attack #
+    ##########
+    my_land = len(mapNetwork.check_my_ownership())
+    attack_stage_late = my_land >= 2
 
-    #################################################################
-    # Step 4: Proceed to attack the continent with the least troops #
-    #################################################################
+    # if outside of the continent, follow the path returned from dijkstra
+    if len(path) > 1:
+        attacker = path[0]
+        target = path[1]
+        if attack_stage_late:
+            if game.state.territories[attacker].troops >= 5 and game.state.territories[target].troops*2 <= game.state.territories[attacker].troops:
+                return game.move_attack(query, attacker, target, min(3, game.state.territories[attacker].troops - 1))
+        else:
+            if game.state.territories[attacker].troops >= 4 and (game.state.territories[target].troops*1.5 + 1.5)//1 <= game.state.territories[attacker].troops:
+                return game.move_attack(query, attacker, target, min(3, game.state.territories[attacker].troops - 1))
 
-
-
-
-
-
-
+    # if starting from within the target continent 
+    continent_enemies = list(set(mapNetwork.continents[continent_to_attack]) - set(my_territories))
+    next_bridge = list(set(mapNetwork.bridges_list())&set(continent_enemies))
+    best_path = []
+    for i in next_bridge:
+        path = []
+        path = mapNetwork.find_path_through_enemies(best_node, i, continent_enemies)
+        if len(path) > len(best_path):
+            best_path = path
+        if len(best_path) > 1:
+            attacker = best_node
+            target = best_path[1]
+            if attack_stage_late:
+                if game.state.territories[attacker].troops >= 5 and game.state.territories[target].troops*2 <= game.state.territories[attacker].troops:
+                    return game.move_attack(query, attacker, target, min(3, game.state.territories[attacker].troops - 1))
+            else:
+                if game.state.territories[attacker].troops >= 4 and (game.state.territories[target].troops*1.5 + 1.5)//1 <= game.state.territories[attacker].troops:
+                    return game.move_attack(query, attacker, target, min(3, game.state.territories[attacker].troops - 1))
             
     return game.move_attack_pass(query)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    # def attack_weakest(territories: list[int]) -> Optional[MoveAttack]:
-    #     # We will attack the weakest territory from the list.
-    #     territories = sorted(territories, key=lambda x: game.state.territories[x].troops, reverse=True)
-    #     for candidate_target in territories:
-    #         if mapNetwork.get_node_owner(candidate_target) != 'me':
-    #             candidate_attackers = sorted(list(set(game.state.map.get_adjacent_to(candidate_target)) & set(my_territories)), key=lambda x: game.state.territories[x].troops, reverse=False)
-                
-    #             for candidate_attacker in candidate_attackers:
-    #                 if game.state.territories[candidate_attacker].troops >= 3 and (game.state.territories[candidate_target].troops*1.2 + 2)//1 <= game.state.territories[candidate_attacker].troops:
-    #                     # attacker_surrounding = (set(game.state.map.get_adjacent_to(candidate_attacker))-set(my_territories))
-    #                     target_surrounding = (set(game.state.map.get_adjacent_to(candidate_target))-set(my_territories))
-    #                     #attacker_surrounding.union
-    #                     surrounding_enemies = list(target_surrounding)
-    #                     surrounding_troops = []
-                        
-    #                     for i in surrounding_enemies:
-    #                         surrounding_troops.append(mapNetwork.get_node_troops(i))
-                        
-    #                     if surrounding_troops and max(surrounding_troops) < mapNetwork.get_node_troops(candidate_attacker):
-    #                         if game.state.territories[candidate_attacker].troops >= 4:
-    #                             return game.move_attack(query, candidate_attacker, candidate_target, min(3, game.state.territories[candidate_attacker].troops - 1))
-                        
-    #                     elif len(surrounding_troops) == 0:
-    #                         return game.move_attack(query, candidate_attacker, candidate_target, min(3, game.state.territories[candidate_attacker].troops - 1))
-                        
-    # '''game_phase'''
-    # game_state = len(game.state.recording) #game starts after 127
-    # avg = mapNetwork.get_average_troops() #average troops per players
-    # domination = len(mapNetwork.check_my_ownership()) + len(mapNetwork.check_ownership()) #how many continents are near conquered already
-    # # locate my continent
-
-    # my_borders = game.state.get_all_border_territories(my_territories)
-    # weakest_continent = mapNetwork.find_optimal_paths_to_continents(my_borders)
-    # for continent, node_list, troops_num in weakest_continent:
-    #     if troops_num != 0:
-    #         if len(node_list)>1: #not fully conquered
-    #             move = attack_weakest(node_list[1:])
-    #             if move != None:
-    #                 return move
-    #         elif len(node_list)==1: #im already in the continent:
-    #             continent_enemies = list(set(mapNetwork.continents[continent]) - set(my_territories))
-    #             #should make a path such that it will end at the next bridge
-    #             move = attack_weakest(continent_enemies)
-    #             if move != None:
-    #                 return move
-
-    # # if move == None:
-    # #     strongest_territories = sorted(my_territories, key=lambda x: game.state.territories[x].troops, reverse=False)
-    # #     for territory in strongest_territories:
-    # #         move = attack_weakest(list(set(game.state.map.get_adjacent_to(territory)) - set(my_territories)))
-    # #         if move != None:
-    # #             return move

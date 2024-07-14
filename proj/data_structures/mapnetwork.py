@@ -311,23 +311,29 @@ class MapNetwork:
 # Sort by the total troops required and path length
         # e.g[['NA', [0], 0], ['SA', [2, 30], 40], ['EU', [4, 10], 70],...
 
-    def get_total_number_of_enemy_troops_by_continent(self):
-        result = {}
+    # def get_total_number_of_enemy_troops_by_continent(self):
+    #     result = {}
 
-        nodes_owned_by_me = self.nodes_with_same_owner('me')
+    #     nodes_owned_by_me = self.nodes_with_same_owner('me')
 
-        for key, value in self.continents.items():
-            enemy_troops = 0
-            for n in value:
-                if n in nodes_owned_by_me:
-                    continue
-                enemy_troops += self.get_node_troops(n)
-            result[key] = enemy_troops
+    #     for key, value in self.continents.items():
+    #         enemy_troops = 0
+    #         for n in value:
+    #             if n in nodes_owned_by_me:
+    #                 continue
+    #             enemy_troops += self.get_node_troops(n)
+    #         result[key] = enemy_troops
 
-        return result
+    #     return result
 
     def is_node_in_continent(self, node, continent):
         return node in self.continents[continent]
+    
+    def get_enemy_troops_in_continent(self, continent):
+        troops = 0
+        for territory in self.continents[continent]:
+            troops += self.get_node_troops(territory)
+        return troops
 
     # node is a number
     # continent is one of 'NA', 'SA', 'EU', 'AF', 'AS', 'AU'
@@ -382,7 +388,26 @@ class MapNetwork:
 
         return [ result, path ]
 
+    def find_path_through_enemies(self, start_node, end_node, enemy_nodes):
+            def dfs_path(graph, current, end, enemies, path, visited, max_path):
+                if current == end:
+                    if len(path) > len(max_path[0]):
+                        max_path[0] = list(path)
+                    return
 
+                for neighbor in graph.neighbors(current):
+                    if neighbor not in visited and neighbor in enemies:
+                        visited.add(neighbor)
+                        path.append(neighbor)
+                        dfs_path(graph, neighbor, end, enemies, path, visited, max_path)
+                        path.pop()
+                        visited.remove(neighbor)
+
+            max_path = [[]]
+            visited = {start_node}
+            dfs_path(self.G, start_node, end_node, set(enemy_nodes), [start_node], visited, max_path)
+
+            return max_path[0] #a list from my starting node all the way to the next bridge specified in the end node 
     # def update_mapnetwork(self, game: Game):
     #     player_list = list(range(5))
     #     other_players = list(set(player_list) - {game.state.me.player_id})
