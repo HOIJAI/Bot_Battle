@@ -141,7 +141,7 @@ class MapNetwork:
                     break 
         return results
     
-    def check_my_ownership(self):
+    def initial_continent_ownership(self):
         results = []
         for continent, nodes in self.continents.items():
             owner_count = {'me': 0}  # Initialize owner count for 'me'
@@ -151,6 +151,21 @@ class MapNetwork:
                     owner_count['me'] += 1
 
             if owner_count['me'] / len(nodes) >= 0.6:
+                results.append(continent)
+        # Sort results based on the length of the continent (number of nodes)
+        results.sort(key=lambda x: len(self.continents[x]), reverse=True)
+        return results
+    
+    def check_my_ownership(self):
+        results = []
+        for continent, nodes in self.continents.items():
+            owner_count = {'me': 0}  # Initialize owner count for 'me'
+            for node in nodes:
+                owner = self.G.nodes[node]['owner']
+                if owner == 'me':
+                    owner_count['me'] += 1
+
+            if owner_count['me'] / len(nodes) >= 1:
                 results.append(continent)
         # Sort results based on the length of the continent (number of nodes)
         results.sort(key=lambda x: len(self.continents[x]), reverse=True)
@@ -329,6 +344,33 @@ class MapNetwork:
     def is_node_in_continent(self, node, continent):
         return node in self.continents[continent]
 
+    def get_enemy_troops_in_continent(self, continent):
+        troops = 0
+        for territory in self.continents[continent]:
+            troops += self.get_node_troops(territory)
+        return troops
+    
+    def find_path_through_enemies(self, start_node, end_node, enemy_nodes):
+        def dfs_path(graph, current, end, enemies, path, visited, max_path):
+            if current == end:
+                if len(path) > len(max_path[0]):
+                    max_path[0] = list(path)
+                return
+
+            for neighbor in graph.neighbors(current):
+                if neighbor not in visited and neighbor in enemies:
+                    visited.add(neighbor)
+                    path.append(neighbor)
+                    dfs_path(graph, neighbor, end, enemies, path, visited, max_path)
+                    path.pop()
+                    visited.remove(neighbor)
+
+        max_path = [[]]
+        visited = {start_node}
+        dfs_path(self.G, start_node, end_node, set(enemy_nodes), [start_node], visited, max_path)
+
+        return max_path[0]
+
     # node is a number
     # continent is one of 'NA', 'SA', 'EU', 'AF', 'AS', 'AU'
     # return value is the min distance to any territories of the continent from node as the starting point, inf if no path found
@@ -367,6 +409,7 @@ class MapNetwork:
                     heapq.heappush(pq, (new_distance, neighbor))
 
         result = float('inf')
+        dest = None
         for territory in enemy_territories:
             if distances[territory] < result:
                 result = distances[territory]
